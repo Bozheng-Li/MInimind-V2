@@ -1,85 +1,49 @@
 <div align="center">
 
-![logo](./images/logo.png)
-
-</div>
-
-<div align="center">
+<img src="./images/logo.png" alt="MiniMind-V2" width="120">
 
 # MiniMind-V2
 
-**Pluggable architectures × pluggable algorithms** — trying a different attention
-mechanism is a few lines of YAML; switching the training algorithm is one `--algo` flag.
+**A new attention mechanism is a few lines of YAML. A new training algorithm is one `--algo`.**
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.6-ee4c2c)](https://pytorch.org)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776ab)](https://www.python.org)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.6-ee4c2c?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 
-MiniMind-V2 turns the pipeline of "train your own 64M model from scratch" into a
-**pluggable architecture plus pluggable algorithms**. What it takes over is a
-**hard-coded architecture and a pile of copy-pasted training scripts**:
-
-- Want to try MLA attention? Edit `model_minimind.py`.
-- Want to try DAPO? Copy `train_grpo.py` and start editing.
-- Fix a bug in the training loop? Fix it again in each of the eight `train_*.py`.
-
-V2 turns both of those into parameters:
-
-```
-Model structure  ->  arch/           four slots x 18 registered components, YAML-driven
-Training algo    ->  trainer/algos/  16 algorithms, one implementation each, --algo switch
-```
-
-What this buys is **comparability**: 18 architecture sweeps, two-arm SFT comparisons,
-4 RL algorithms x 2 base models — every arm shares the same forward/backward, so the
-differences are cleanly attributable to the components themselves rather than to
-"this arm happened to have an implementation divergence I didn't notice".
-
-> Note: This project is released under the Apache 2.0 license and is completely free.
-
----
-
-<div align="center">
-
-![minimind-3](./images/minimind-3.gif)
-
-[🔗 Online Demo](https://www.modelscope.cn/studios/gongjy/MiniMind) | [🔗 Video Introduction](https://www.bilibili.com/video/BV12dHPeqE72)
-
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <a href="https://huggingface.co/collections/jingyaogong/minimind" style="text-decoration: none;">
-          <img src="./images/with_huggingface.png" alt="Hugging Face Logo" style="vertical-align: middle; width: auto; max-width: 100%;" />
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://www.modelscope.cn/profile/gongjy" style="text-decoration: none;">
-          <img src="./images/with_modelscope.png" alt="ModelScope Logo" style="vertical-align: middle; width: auto; max-width: 100%;" />
-        </a>
-      </td>
-    </tr>
-  </table>
-</div>
-
+[中文](./README.md)
 
 </div>
 
 ---
 
-# 📌 Project Introduction
+The model is four slots and 18 registered components, assembled from YAML.
+The trainer is 16 algorithms, one implementation each, switched with `--algo`.
+Every comparison arm shares the same forward and backward, so a difference
+is the component you swapped in — not an implementation divergence you didn't notice.
 
-MiniMind-V2 is a **pluggable architecture + pluggable algorithms** project. It turns
-"training a 64M model from scratch" into something you configure rather than copy-paste:
-the model structure lives in `arch/` (four slots x 18 registered components, assembled
-from YAML), and the training algorithm lives in `trainer/algos/` (16 algorithms, one
-implementation each, switched with `--algo`).
+```
+model structure   arch/            four slots × 18 components, YAML-assembled
+training algo     trainer/algos/   16 algorithms, one implementation each
+```
 
-The sections below cover the original MiniMind design notes and training recipes that
-this project inherits and builds on. For what is new in V2, see the Chinese
-[README.md](./README.md), which documents the architecture layer, the unified training
-entry point, the configuration system, the Web console and the experiment suite.
+```bash
+git clone https://github.com/Bozheng-Li/MInimind-V2.git && cd MInimind-V2
+pip install -r requirements.txt
+cd trainer
+python train.py --algo pretrain --config configs/pretrain.yaml
+python train.py --algo sft      --config configs/sft.yaml
+python eval.py  --config configs/sft.yaml --weight full_sft
+```
+
+Data is not in the repo. The 1.2GB mini pretrain set and 1.6GB mini SFT set are
+enough to run the whole pipeline — see [`dataset/dataset.md`](dataset/dataset.md),
+or download from [HuggingFace](https://huggingface.co/datasets/jingyaogong/minimind_dataset)
+and [ModelScope](https://www.modelscope.cn/datasets/gongjy/minimind_dataset/files).
+
+The Chinese [README.md](./README.md) is the full document: the architecture layer,
+the algorithm table, the configuration rules, the Web console, and the experiment
+results. Everything below is the design notes and training recipes this project
+inherits.
 
 The emergence of Large Language Models (LLMs) has drawn unprecedented global attention to AI. ChatGPT, DeepSeek, Qwen, and many other models have impressed people with their remarkable performance, making the impact of this technological wave feel very real. However, models with tens or hundreds of billions of parameters are not only difficult to train on personal devices, but often out of reach even for deployment. Opening the "black box" of large models and truly understanding how they work internally should have been an exciting thing. Unfortunately, most explorations eventually stop at applying techniques such as LoRA to fine-tune existing large models on a few new instructions or specific tasks. This is more like teaching Newton how to use a 21st-century smartphone — interesting, but not quite the original goal of understanding the essence of physics.
 
