@@ -1,199 +1,294 @@
 <div align="center">
 
-<img src="./images/logo.png" alt="MiniMind-V2" width="120">
+<img src="./images/logo.png" alt="MiniMind-V2" width="600">
 
-# MiniMind-V2
+### 极简 · 模块化 · 全流程大模型训练框架
 
-**换一种注意力，改几行 YAML。换一种训练算法，换一个 `--algo`。**
+**换一种注意力，改几行 YAML ｜ 换一种训练算法，换一个 `--algo`**
 
-把「从 0 训一个小模型」做成可插拔的架构，加上可插拔的算法。
-四槽位 × 18 个组件，16 种算法共用同一套 forward / backward。
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.6+-ee4c2c.svg?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776ab.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
+[![HuggingFace](https://img.shields.io/badge/🤗%20HuggingFace-Datasets-ffd21e.svg?style=flat-square)](https://huggingface.co/datasets/jingyaogong/minimind_dataset)
+[![ModelScope](https://img.shields.io/badge/ModelScope-Datasets-624aff.svg?style=flat-square)](https://www.modelscope.cn/datasets/gongjy/minimind_dataset/files)
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square)](https://github.com/Bozheng-Li/MInimind-V2/pulls)
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.6-ee4c2c?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
+<p align="center">
+  <a href="#quickstart">⚡ 极速上手</a> •
+  <a href="#architecture">🧩 架构全景</a> •
+  <a href="#algorithms">🚀 16种算法</a> •
+  <a href="#experiments">📊 实验与消融</a> •
+  <a href="#webui">🖥️ Web控制台</a> •
+  <a href="#datasets">📦 数据集</a> •
+  <a href="./README_en.md">🌐 English</a>
+</p>
+
+<!-- Live Demo -->
+<img src="./images/minimind-3.gif" alt="MiniMind Live Chat Demo" width="100%">
 
 </div>
 
 ---
 
-## 为什么是 V2
+### ✨ 核心特性
 
-接手的是一份写死的架构，外加八个互相复制的 `train_*.py`。
-想试 MLA，得改 `model_minimind.py`；想试 DAPO，得复制一份 `train_grpo.py` 再改；
-训练循环里修一个 bug，八个脚本各改一遍。
-
-V2 把这两件事都收成参数。所有对比组走同一套前向与反向，
-差异只来自你换上的那个组件，而不是「这组比那组多了一处没注意到的实现分歧」。
-
-```
-模型结构   arch/            四个槽位 × 18 个已注册组件，YAML 组装
-训练算法   trainer/algos/   16 个算法各一份实现，--algo 切换
-```
+<table align="center" width="100%">
+  <tr>
+    <td width="50%">
+      <h4>🧩 四槽模块化架构</h4>
+      <p>Attention · FFN · Positional · Norm 完全解耦。18 个前沿组件 YAML 自由组合（GQA / MLA / SwiGLU / DeepSeekMoE 等），新增算子只需单文件 <code>@register</code>。</p>
+    </td>
+    <td width="50%">
+      <h4>🚀 16 种训练算法一体化</h4>
+      <p>Pretrain · SFT · LoRA/QLoRA · Distill · DPO/KTO/SimPO · PPO/GRPO/DAPO · Agent RL，单训练器 <code>--algo</code> 一键切换，共享相同底层优化。</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h4>📊 严谨等算力消融基准</h4>
+      <p>18 组等预算扫描（61M token 与 1.39B SFT 双臂）。提供真实 Pareto 前沿、吞吐与 KV Cache 效率对比，彻底杜绝隐式实现偏差。</p>
+    </td>
+    <td width="50%">
+      <h4>🖥️ 原生极简 Web 控制台</h4>
+      <p>零 npm、零构建的 FastAPI 原生控制台。整合实时推理对话（<code>/</code>）、多模型评测实验台（<code>/lab</code>）、训练监控大屏（<code>/train</code>）。</p>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## 30 秒上手
+<a id="quickstart"></a>
+## ⚡ 30 秒极速上手
+
+### 1. 环境准备
 
 ```bash
 git clone https://github.com/Bozheng-Li/MInimind-V2.git
 cd MInimind-V2
-pip install -r requirements.txt          # torch 单独装，见文件内注释
+pip install -r requirements.txt  # torch 请根据自身 CUDA 版本独立安装
 ```
 
-数据不进仓库。下 [mini 预训练集 1.2GB](https://huggingface.co/datasets/jingyaogong/minimind_dataset) 与
-[mini SFT 集 1.6GB](https://www.modelscope.cn/datasets/gongjy/minimind_dataset/files)，
-放到 `dataset/pretrain/` 与 `dataset/sft/`。完整清单见 [`dataset/dataset.md`](dataset/dataset.md)。
+### 2. 下载数据并放置
+
+下载 [mini 预训练集 (1.2GB)](https://huggingface.co/datasets/jingyaogong/minimind_dataset) 与 [mini SFT 集 (1.6GB)](https://www.modelscope.cn/datasets/gongjy/minimind_dataset/files)，放入对应目录：
 
 ```bash
-cd trainer
-python train.py --algo pretrain --config configs/pretrain.yaml
-python train.py --algo sft      --config configs/sft.yaml
-python eval.py  --config configs/sft.yaml --weight full_sft
+dataset/pretrain/pretrain_t2t_mini.jsonl
+dataset/sft/sft_t2t_mini.jsonl
 ```
 
-换成门控注意力 + 细粒度 MoE，配置与权重必须成对：
+### 3. 一键训练与评测
 
 ```bash
-python train.py --algo pretrain --config configs/pretrain_moe.yaml
-python train.py --algo sft      --config configs/sft_moe.yaml
+# 1. 预训练
+python trainer/train.py --algo pretrain --config configs/pretrain.yaml
+
+# 2. 监督微调 (SFT)
+python trainer/train.py --algo sft --config configs/sft.yaml
+
+# 3. 终端推理交互
+python trainer/eval.py --config configs/sft.yaml --weight full_sft
 ```
 
-权重、日志、指标 CSV 默认落在 `test/`。想改落点：`export MINIMIND_ARTIFACT_ROOT=/path/to/artifacts`。
+> 💡 **切换为 Gated 注意力 + 细粒度 MoE 架构**：
+> ```bash
+> python trainer/train.py --algo pretrain --config configs/pretrain_moe.yaml
+> python trainer/train.py --algo sft      --config configs/sft_moe.yaml
+> ```
 
 ---
 
-## 可插拔架构
+<a id="architecture"></a>
+## 🧩 四槽可插拔架构
 
-模型拆成四个槽位。每个槽位是 `type` 加该组件自己的参数。
-新增组件：写一个文件，加 `@register`，在 YAML 里写名字。不用改框架。
+模型拆分为四个标准槽位，所有组件在 `arch/` 下声明注册。换结构只需改 YAML：
 
-```
-arch/
-├── attention/     gqa · gated · sliding_window · mla · compressed · deltanet
-├── ffn/           swiglu · geglu · moe · moe_shared · moe_finegrained
-├── positional/    rope · partial_rope · nope
-└── norm/          rmsnorm · rmsnorm_zero_centered · layernorm
-```
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%"><b>Dense 结构 (GQA + SwiGLU)</b></td>
+    <td align="center" width="50%"><b>MoE 细粒度结构 (Gated + Finegrained MoE)</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="./images/LLM-structure.jpg" width="100%" alt="Dense Architecture"></td>
+    <td align="center"><img src="./images/LLM-structure-moe.jpg" width="100%" alt="MoE Architecture"></td>
+  </tr>
+</table>
 
-| 槽位 | `type` | 来自 | 它做的事 |
-|------|--------|------|----------|
-| attention | `gqa` | Llama / Qwen | 分组查询 + QK-Norm。KV 头数等于查询头数即 MHA，设为 1 即 MQA |
-| | `gated` | Qwen3-Next | 输出门 + 零中心 QK-Norm，可配 partial RoPE |
-| | `sliding_window` | Mistral / Gemma | 每个 token 只看前 `window_size` 个 |
-| | `mla` | DeepSeek-V2/V3 | KV 压进 latent，RoPE 只打在解耦的那几维。缓存 224B/token，GQA 是 768B |
-| | `compressed` | DeepSeek-V4 | 沿序列维压缩，每 `compress_rate` 个 token 收成一项，384B/token |
-| | `deltanet` | Qwen3-Next | 门控线性注意力，定长循环状态替代 KV cache |
-| feedforward | `swiglu` / `geglu` | Llama / Gemma | 门控 FFN，激活分别是 SiLU 与 GELU |
-| | `moe` | — | top-k 路由 + aux loss |
-| | `moe_shared` | DeepSeekMoE | 常驻共享专家 + N 个路由专家 |
-| | `moe_finegrained` | DeepSeek-V3 | 细粒度专家，可学习 bias 做均衡，不靠 aux loss |
-| positional | `rope` | — | 旋转位置编码，`inference_rope_scaling` 开 YaRN |
-| | `partial_rope` / `nope` | — | 只旋转前若干维 / 完全不加位置编码 |
-| norm | `rmsnorm` | Llama | 标准 RMSNorm |
-| | `rmsnorm_zero_centered` | Qwen3-Next | 权重从 0 起步，等价于恒等映射 |
-| | `layernorm` | — | 经典 LayerNorm，留给消融 |
+### 18 个已注册组件全景
 
-插拔能成立，靠的是框架把两处耦合收进了组件内部，而不是让你在 YAML 里手工对齐：
+| 槽位 | `type` | 灵感来源 | 特性解析 |
+|---|---|---|---|
+| **Attention** | `gqa` | Llama / Qwen | 分组查询注意力 + QK-Norm，KV 头数设为 1 即 MQA |
+| | `gated` | Qwen3-Next | 输出门控 + 零中心 QK-Norm，支持 partial RoPE |
+| | `sliding_window` | Mistral / Gemma | 局部滑动窗口，限制注意力半径 `window_size` |
+| | `mla` | DeepSeek-V2/V3 | 低秩投影压缩 KV，解耦 RoPE 维度（224B/token vs GQA 768B） |
+| | `compressed` | DeepSeek-V4 | 沿序列维步长压缩，大幅缩减 KV 缓存（384B/token） |
+| | `deltanet` | Qwen3-Next | 线性注意力，固定状态大小替代自回归 KV cache |
+| **FFN** | `swiglu` / `geglu` | Llama / Gemma | 经典门控 FFN，分别使用 SiLU / GELU 激活 |
+| | `moe` | 经典顶会结构 | Top-k 路由 + 负载均衡辅助损失 (aux loss) |
+| | `moe_shared` | DeepSeekMoE | 共享专家常驻 + N 个稀疏路由专家 |
+| | `moe_finegrained` | DeepSeek-V3 | 细粒度切分专家，可学习 bias 无辅助损均衡 |
+| **Positional** | `rope` | RoFormer | 旋转位置编码，支持 YaRN 动态插值扩上下文 |
+| | `partial_rope` / `nope` | — | 仅对前几维施加旋转 / 完全不添加位置编码 |
+| **Norm** | `rmsnorm` | Llama | 经典 RMSNorm |
+| | `rmsnorm_zero_centered`| Qwen3-Next | 初始权重置零，等价于平滑恒等变换 |
+| | `layernorm` | Transformer | 经典双统计量 LayerNorm |
 
-- **注意力决定旋转维数。** MLA 的 RoPE 只作用在 `qk_rope_head_dim` 上，远小于 `head_dim`。
-  组件可声明 `positional_dim(cfg)`，不声明就退回 `head_dim`。
-- **MoE 专家是槽内参数。** `moe_finegrained` 用 `cfg.override(...)` 派生窄专家，
-  专家宽度、数量、均衡策略都不进全局 `model` 段。
+### 架构效率：KV 缓存与显存占用对比
 
-`type` 也可以写仓库外的完整路径，注册表查不到短名就按 `importlib` 回退：
+<div align="center">
+  <img src="./images/arch_cache_params.png" width="95%" alt="Cache and Parameters Comparison">
+</div>
 
 ```yaml
-attention:
-  type: my_ext.attention.FlashAttention
-```
-
----
-
-## 可插拔算法
-
-每个算法在 `trainer/algos/` 里只有一份实现。旧的 `train_*.py` 退化成兼容壳，补上固定的 `--algo` 后转发给统一入口。
-
-```bash
-python trainer/train.py --algo sft  --config configs/base.yaml
-python trainer/train.py --algo dpo  --config configs/base.yaml
-python trainer/train.py --algo grpo --config configs/base.yaml
-
-torchrun --nproc_per_node 4 trainer/train.py --algo grpo
-```
-
-不带 `--config` 时按算法选阶段配置：`pretrain` → `pretrain.yaml`，
-`sft` / `lora` / `qlora` / `distill` → `sft.yaml`，偏好优化与在线 RL → `rl.yaml`。
-命令行永远压过配置。
-
-| | 算法 | 额外依赖 | 用在 |
-|---|------|----------|------|
-| 预训练 | `pretrain` | — | 原始文本 next-token |
-| 监督微调 | `sft` | — | 全参数指令微调 |
-| 参数高效 | `lora` · `qlora` | QLoRA 需 bitsandbytes + CUDA | 小显存垂域微调，默认 NF4 + double quant |
-| 蒸馏 | `distill` | teacher | 白盒分布蒸馏 |
-| 离线偏好 | `dpo` · `ipo` · `kto` | reference | 有 chosen / rejected |
-| 无 reference | `simpo` · `cpo` · `orpo` | — | 少占一份 reference 显存 |
-| 在线，无 Critic | `grpo` · `rloo` | reward + reference | 可验证奖励 |
-| | `dapo` | reward | Clip-Higher、动态采样、token 级 loss |
-| Actor-Critic | `ppo` | reward + reference + critic | 通用 RLHF |
-| 多轮工具 | `agent` | reward + reference + 工具环境 | 工具调用强化学习 |
-
-三个容易踩错的口径：
-
-- **CISPO 是默认的在线策略目标**（`--loss_type cispo`）。它用 detach 后的 ratio 做上侧裁剪，梯度不会被裁剪项反复抹掉。
-- **IPO 与 CPO 的长度口径不同。** IPO 用每 token 平均后的间隔；CPO 的 sigmoid 项用序列总 log-prob。SimPO 才是无 reference 的长度归一化目标。
-- **Agent 的训练奖励与评测 `pass_rate` 是同一个函数**，`trainer/algos/rl/agent_tools.py::calculate_rewards`。
-
-加一个算法：继承 `Algorithm`，实现 `build_dataset()` 与 `compute_loss(batch) -> (loss, aux_loss)`
-（`loss` 须已除以 `accumulation_steps`），需要 ref / teacher / critic / reward 就实现 `extra_models()`，
-然后在 `algos/__init__.py` 的 `_ALGO_MODULES` 登记。
-
----
-
-## 配置
-
-`--config` 是叠加，不是替换。阶段配置打底，你的文件盖在上面，所以一份实验配置可以只有几行：
-
-```yaml
-# configs/mla.yaml
+# configs/experiments/mla_finegrained.yaml (极简覆写，其余继承 base.yaml)
 attention:
   type: mla
   num_attention_heads: 8
   num_key_value_heads: 4
+ffn:
+  type: moe_finegrained
+  num_experts: 8
+  num_experts_per_tok: 2
 ```
-
-数据路径、序列长度、学习率沿用阶段配置。相对路径一律相对仓库根解析，与启动目录无关。
-
-| 变量 | 默认 | 管什么 |
-|------|------|--------|
-| `REPO_ROOT` | `configs/` 的上一级 | `data.path`、配置自身 |
-| `ARTIFACT_ROOT` | `<repo>/test` | 权重、指标 CSV、续训档 |
-
-两条必须知道的约束：
-
-- **YAML 里的指数要带符号。** `1.0e6` 会被 PyYAML 读成字符串，`1.0e+6` 才是 float。
-- **`--use_moe 1` 只在前馈本身是稠密时生效。** 无条件覆写会把 `moe_shared` / `moe_finegrained`
-  降级成普通 top-k MoE，共享专家和 aux-loss-free 一起丢掉，而参数量只差共享专家那一份，外面看不出来。
 
 ---
 
-## 数据
+<a id="algorithms"></a>
+## 🚀 16 种训练算法一体化
 
+算法统一定义于 `trainer/algos/`，从 Next-Token 预测、偏好对齐到多轮工具调用强化学习全链路打通。
+
+<div align="center">
+  <img src="./images/rl-structure.jpg" width="95%" alt="MiniMind RL Training System">
+</div>
+
+### 算法矩阵
+
+| 训练阶段 | 算法 | 外部依赖 | 核心适用场景 |
+|---|---|---|---|
+| **预训练** | `pretrain` | — | 海量文本自监督 Next-Token 训练 |
+| **指令微调** | `sft` | — | 全参数对话/任务指令监督微调 |
+| **参数高效微调** | `lora` · `qlora` | bitsandbytes | 极低显存消费，支持 NF4 双重量化 |
+| **知识蒸馏** | `distill` | Teacher 模型 | 白盒分布蒸馏，向大模型对齐 logits |
+| **离线偏好对齐** | `dpo` · `ipo` · `kto` | Reference 模型 | 成对标注数据 (chosen / rejected) 对齐 |
+| **无 Reference 对齐** | `simpo` · `cpo` · `orpo` | — | 节省 50% 模型显存，单模型直接偏好优化 |
+| **在线强化学习 (无 Critic)** | `grpo` · `rloo` | Reward + Reference | 规则验证型任务 (数学/代码)，显存友好 |
+| | `dapo` | Reward | Clip-Higher 与 token 级自适应 loss 目标 |
+| **Actor-Critic RL** | `ppo` | Reward + Ref + Critic | 经典全功能 PPO 强化学习 |
+| **Agent 工具强化学习** | `agent` | Reward + 工具环境 | 多轮 Tool-Call 自动交互与动作空间优化 |
+
+> 📌 **训练关键说明**：
+> - **在线强化学习默认采用 CISPO**（`--loss_type cispo`），有效避免梯度被对称裁剪抹平。
+> - **一键多卡分布式启动**：
+>   ```bash
+>   torchrun --nproc_per_node 4 trainer/train.py --algo grpo --config configs/rl.yaml
+>   ```
+
+---
+
+<a id="experiments"></a>
+## 📊 实验结论与损失曲线
+
+在严格等 Token 预算（61M tokens）和同 Seed、同数据分布下对 18 组架构进行了全景实测扫描。
+
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="52%"><b>全维度基准雷达图 (Benchmark Radar)</b></td>
+    <td align="center" width="48%"><b>算力 vs 收益 Pareto 前沿面</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="./images/benchmark_radar.jpg" width="100%" alt="Benchmark Radar"></td>
+    <td align="center"><img src="./images/arch_pareto.png" width="100%" alt="Pareto Frontier"></td>
+  </tr>
+</table>
+
+### 全生命周期训练损失收敛画廊
+
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%"><b>① 预训练收敛曲线 (Pretrain Loss)</b><br><img src="./images/pretrain_loss.jpg" width="100%" alt="Pretrain Loss"></td>
+    <td align="center" width="50%"><b>② 指令微调收敛曲线 (SFT Loss)</b><br><img src="./images/sft_loss.jpg" width="100%" alt="SFT Loss"></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><b>③ GRPO 在线强化学习曲线</b><br><img src="./images/grpo_loss.jpg" width="100%" alt="GRPO Loss"></td>
+    <td align="center" width="50%"><b>④ Agent 工具调用强化学习曲线</b><br><img src="./images/agent_rl_loss.jpg" width="100%" alt="Agent RL Loss"></td>
+  </tr>
+</table>
+
+<details>
+<summary>🔍 点击展开：PPO 损失收敛曲线 & RoPE 长度外推评测</summary>
+
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%"><b>PPO 训练全指标收敛</b><br><img src="./images/ppo_loss.jpg" width="100%" alt="PPO Loss"></td>
+    <td align="center" width="50%"><b>RoPE 扩展长度与 PPL 变化</b><br><img src="./images/rope_ppl.png" width="100%" alt="RoPE PPL"></td>
+  </tr>
+</table>
+
+</details>
+
+### 实验站住的 5 项核心定论
+
+1. **门控注意力稳健收益**：Gated Attention 获得 Δloss −0.055 的稳定提升，达到相同 loss 只需 0.84× 步数（已纳入主线配置）。
+2. **MoE 必须按等算力核算**：SFT 双臂实测，MoE（214M / 激活 80M）相比 Dense（64M）验证 loss 从 0.6370 降至 0.5523（−0.0847），但吞吐为 Dense 的 22%。
+3. **极小模型下不要过度省缓存**：在 64M 规模下，MLA/Compressed 降低了参数表达能力，loss 反升；该技巧更适合数十亿级别大模型。
+4. **位置编码保持经典 RoPE 最佳**：`rope_theta=1.0e+6` 表现优异，完全剥离位置编码（NoPE）性能显著劣化。
+5. **后训练四算法在 64M 的标准 benchmark 上均无明显分别力**：需要结合多轮 Agent 工具场景与特定验证任务检验强化学习效果。
+
+---
+
+<a id="webui"></a>
+## 🖥️ 原生全栈 Web 控制台
+
+纯原生开发（FastAPI + 原生 JS/CSS），**无 node/npm、无复杂前端打包、无 CDN 依赖**，启动即用。
+
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%"><b>实时对话与工具调用 (<code>/</code>)</b><br><img src="./images/agent_webui.jpg" width="100%" alt="Chat & Tool Call WebUI"></td>
+    <td align="center" width="50%"><b>多模型评测实验台 (<code>/lab</code>)</b><br><img src="./webui/screenshots/lab_eval_viz.png" width="100%" alt="Lab Evaluation Matrix"></td>
+  </tr>
+</table>
+
+```bash
+# 启动控制台（默认端口 7860）
+python webui/server.py
+
+# 启动并稍后在界面中按需载入权重
+python webui/server.py --no-load
 ```
-dataset/
-├── pretrain/   pretrain_t2t.jsonl          10GB · 847 万条 · ~3.2B token
-│               pretrain_t2t_mini.jsonl      1.2GB · 127 万条
-├── sft/        sft_t2t.jsonl               14GB · 511 万条（已混入 Tool Call）
-│               sft_t2t_mini.jsonl           1.6GB · 90.6 万条
-└── rl/         dpo.jsonl · rlaif.jsonl · agent_rl.jsonl · agent_rl_math.jsonl
-```
 
-下载：[HuggingFace](https://huggingface.co/datasets/jingyaogong/minimind_dataset/tree/main) ·
-[ModelScope](https://www.modelscope.cn/datasets/gongjy/minimind_dataset/files)。按需单文件下载即可。
+| 访问路由 | 页面定位 | 核心能力 |
+|---|---|---|
+| `http://localhost:7860/` | **对话终端** | 任意架构原生 `.pth` 模型加载、流式响应、思考链 `<think>` 与工具调用渲染 |
+| `http://localhost:7860/lab` | **模型实验台** | 跨架构指标横向对比、13 项评测集雷达展现、Pareto 散点图可视化 |
+| `http://localhost:7860/train` | **训练大屏** | 当前训练实时 Loss / 吞吐 / 显存占用曲线监控 |
 
-预训练支持按权重配比，模型看到的比例等于权重比，与各文件条数无关：
+---
 
+<a id="datasets"></a>
+## 📦 数据集与获取
+
+<div align="center">
+  <img src="./images/dataset.jpg" width="100%" alt="Dataset Distribution">
+</div>
+
+<p align="center">
+  <a href="https://huggingface.co/datasets/jingyaogong/minimind_dataset"><img src="./images/with_huggingface.png" height="40" alt="HuggingFace"></a>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.modelscope.cn/datasets/gongjy/minimind_dataset/files"><img src="./images/with_modelscope.png" height="40" alt="ModelScope"></a>
+</p>
+
+| 阶段 | 文件 | 大小 | 规模 / 说明 |
+|---|---|---|---|
+| **预训练** | `pretrain_t2t.jsonl` | 10.0 GB | 847 万条，约 3.2B Tokens 全量无监督语料 |
+| | `pretrain_t2t_mini.jsonl` | 1.2 GB | 127 万条，精简起步预训练语料 |
+| **指令微调** | `sft_t2t.jsonl` | 14.0 GB | 511 万条，覆盖通用对话、QA、代码及工具调用 |
+| | `sft_t2t_mini.jsonl` | 1.6 GB | 90.6 万条，快速验证指令集 |
+| **强化学习** | `dpo.jsonl` · `rlaif.jsonl` | ~1.5 GB | 成对偏好对齐数据集 |
+| | `agent_rl.jsonl` · `agent_rl_math.jsonl` | ~200 MB | 多轮环境工具调用与数学推理语料 |
+
+预训练支持多数据源按比例自由混合：
 ```yaml
 data:
   path: dataset/pretrain
@@ -204,136 +299,60 @@ data:
     pretrain_t2t.code.jsonl:  0.05
 ```
 
-`max_seq_len` 是 token 数。本仓库 tokenizer 下，中文约 1.5–1.7 字符/token，英文约 4–5。
-上游文档里的「最大长度」标的是字符数。
-
 ---
 
-## Web 控制台
+## ⚡ 推理、服务与生态兼容
 
-FastAPI 后端，三个页面。前端是原生 HTML / CSS / JS，无构建、无 npm、无 CDN。
+MiniMind-V2 提供了完整的生产级服务与转换工具：
 
 ```bash
-python webui/server.py            # http://localhost:7860
-python webui/server.py --no-load  # 进界面再选模型
+# 1. 启动兼容 OpenAI API 的推理服务 (包含 reasoning_content 与 tool_calls)
+python scripts/serve_openai_api.py --config configs/sft.yaml --weight full_sft
+
+# 2. 将原生 .pth 转换导出为 HuggingFace Transformers 格式
+python scripts/convert_model.py --torch_path test/full_sft.pth --output_dir ./minimind-hf
+
+# 3. 运行多轮工具调用自动化测试基准
+python scripts/agent_eval.py
 ```
 
-| 路径 | 页面 | 它回答 |
-|------|------|--------|
-| `/` | 对话 | 这个权重现在能干什么，它是哪次训练产出的 |
-| `/lab` | 实验台 | 各算法、架构、评测怎么比 |
-| `/train` | 训练控制台 | 下一步该起哪个训练，正在跑的那个怎么样了 |
-
-它走 `trainer/eval.py` 的加载路径，所以能打开任意架构组合的原生 `.pth`。
-逐页说明与指标映射见 [`webui/README.md`](webui/README.md)。
-
-`scripts/web_demo.py` 是历史的 Streamlit 入口。它读 transformers 格式目录，
-且 `skip_special_tokens=True` 会把 `<tool_call>`、`<think>` 这类 added token 一起吃掉。
-新训的模型请用上面这条。
+支持快速接入 **vLLM**、**llama.cpp**、**Ollama** 等主流部署引擎。
 
 ---
 
-## 实验里站住的结论
+<details>
+<summary>📂 <b>点击展开：仓库目录树与最佳实践</b></summary>
 
-18 组架构 × 61M token 等预算扫描，外加 SFT 双臂（同 1.39B token、同 seed、同数据，唯一差异是架构）。
-完整数字与回溯索引在 [`test/storage/report/EXPERIMENT_REPORT.md`](test/storage/report/EXPERIMENT_REPORT.md)。
+### 目录结构
 
-| 结论 | 证据 | 主线 |
-|------|------|------|
-| **门控注意力是唯一稳健的正收益** | Δloss −0.055，达到基线只需 0.84× 算力；代价是参数 +7%、吞吐 −19% | 已用于 `pretrain_moe.yaml` |
-| **MoE 要等算力口径才公平** | 61M token 下微正但吞吐仅基线 28%；SFT 等质量只需 0.49×–0.71× 算力，墙钟要付 1.76×–2.57× | 已作主线，部署时权衡墙钟 |
-| **省缓存的注意力在这个预算下全是负的** | MLA +0.137、compressed +0.241、deltanet +0.180 | 未采用 |
-| **位置编码不要动** | `rope_theta=1e6` 优于 `1e4`；`nope` 为 +0.403 | 保持 RoPE |
-| **后训练四算法在 64M 的 benchmark 上没有分辨力** | dense 的 `full_sft` / `dpo` / `agent` / `grpo` 分数相同，接近随机 | 换评测，不换算法 |
-
-SFT 双臂的核心数字：同样 1.39B token，dense（gqa + swiglu，63.9M）验证 loss 0.6370，
-MoE（gated + moe_finegrained，214M / 激活 80M）0.5523，差 −0.0847，全程稳定在 −0.083 到 −0.089。
-dense 吞吐是 MoE 的 4.49 倍。
-
-评测套件分三组：`core`（含 bpb，唯一低方差、可直接相减的主指标）、`sft`（ifeval / gsm8k / humaneval）、
-`rl`（多轮工具调用）。深度三档 `quick` / `standard` / `full`，`quick` 只用于冒烟。
-
-```bash
-python test/storage/eval_suite.py --depth standard
+```text
+arch/        四槽位 × 18 组件定义（attention / ffn / positional / norm）
+configs/     分阶段 YAML 配置与继承引擎
+trainer/     统一训练入口、16 个算法实现与训练脚手架
+model/       兼容层：保留历史接口，确保既有 .pth 仍可 strict=True 载入
+dataset/     数据加载器（LMDataset）与数据说明
+webui/       原生极简 Web 控制台（对话 / 实验台 / 训练监视）
+scripts/     API 服务、模型转换、评测辅助工具
+tests/       公式级单元测试与回归套件
+test/        本地实验产物（日志、权重、报告，不进 git）
 ```
+
+### 避坑指南
+
+1. **不同架构权重不可直接互载**：例如 MLA 与 GQA 的投射维度不同，切换架构需指定 `--from_weight none`。
+2. **变长 RL Rollout 需启用 Flash Attention**：开启 `attention.flash_attn_masked: true`，避免 PyTorch SDPA 退回 eager 模式导致显存爆炸。
+3. **YAML 中科学计数法必须带正负号**：例如写 `1.0e+6`，若写 `1.0e6` 会被 PyYAML 判定为字符串。
+4. **`update_ratio` 标度**：计算逐参数变化 `rms(Δw) / rms(w)`，正常数量级在 1e-4 ~ 1e-3 之间。
+
+</details>
 
 ---
 
-## 验证
+## 🙏 致谢与引用
 
-新增抽象层相对原实现做过逐位对照，而不是「跑起来了」。
+本仓库模型结构、基础训练数据与评测设计继承并升级自 [MiniMind](https://github.com/jingyaogong/minimind)。感谢作者 **Jingyao Gong** 将「从 0 训一个小模型」的设计思路无私开源。
 
-| | 结果 |
-|---|------|
-| pretrain，新层 vs 原脚本 | 2,954 step 的 loss / logits_loss / aux_loss 逐位一致 |
-| grpo | 300 step、7 项指标逐字符一致 |
-| ppo | 310 step、8 项指标逐字符一致 |
-| 重构前后 logits | 最大绝对差 0 |
-
-```bash
-python test/storage/verify_arch.py
-python test/storage/verify_components.py
-python test/storage/verify_trainer.py
-python -m pytest tests/ -v
-```
-
----
-
-## 推理与部署
-
-`trainer/eval.py` 从 `--config` 读架构，能加载任意组合：
-
-```bash
-python trainer/eval.py --config configs/sft_moe.yaml --weight full_sft_moe \
-    --prompt "水的化学式是" --max_new_tokens 60
-```
-
-`eval_llm.py` 是历史脚本。它只认 `--hidden_size` / `--num_hidden_layers` / `--use_moe`，
-而 `--use_moe 1` 拼出来的是普通 top-k MoE。用它加载 `gated`、`moe_finegrained`、`mla` 会得到错误的模型。
-
-```bash
-cd scripts && python serve_openai_api.py     # OpenAI 兼容，含 reasoning_content / tool_calls
-python scripts/convert_model.py              # torch ↔ transformers
-```
-
-vLLM、llama.cpp、ollama、MNN 走主线结构与 Qwen3 生态的对齐。训练侧也可以 `--rollout_engine sglang`。
-
----
-
-## 目录
-
-```
-arch/        四槽位 × 18 组件
-configs/     分阶段 YAML 与加载器
-trainer/     统一入口、16 个算法、训练脚手架
-model/       兼容层：公开名字与行为保留，既有权重仍可 strict=True 加载
-dataset/     数据说明与 Dataset 类
-webui/       对话 / 实验台 / 训练控制台
-scripts/     API 服务、模型转换、工具调用评测
-tests/       公式级回归
-test/        实验产物，不进 git
-```
-
-仓库根只放能 clone 下来直接训练的代码。权重与日志在 `test/`，一刀切开。
-
----
-
-## 踩过的坑
-
-1. **不同架构的权重不能互载。** MLA 的 `q_proj` 形状就和 GQA 不同，换架构必须 `--from_weight none`。
-   SFT 要 `defaults` 引用对应的预训练配置，否则加载直接失败。
-2. **RL 的 rollout 序列是变长的**，要开 `attention.flash_attn_masked: true`。
-   否则 SDPA 退回 eager，物化 `[B, H, L, L]`，一批 12 条 1792 token 的序列就能在 24G 卡上 OOM。
-3. **`max_steps` 是等 token 预算实验的旋钮。** 跑满即停，不看 epochs，不同架构才可比。
-4. **`update_ratio` 低于 1e-3 不是 bug。** 它是逐元素的 `rms(Δw) / rms(w)`。
-   写成 `lr·‖g‖ / ‖w‖` 会漏掉参数量，实测差五个数量级。
-5. **预训练 loss 与 SFT loss 不能直接比。** 前者全序列，后者只在 assistant 段。
-
----
-
-## 引用
-
-模型结构、训练数据与评测口径继承自 MiniMind。研究中使用本仓库时，请一并引用上游：
+如果您在研究或项目中使用了 MiniMind-V2，请同时引用：
 
 ```bibtex
 @misc{minimind,
@@ -344,9 +363,6 @@ test/        实验产物，不进 git
 }
 ```
 
-## 致谢
+## 📄 开源许可证
 
-感谢 [jingyaogong/minimind](https://github.com/jingyaogong/minimind) 把「从 0 训一个小模型」完整开源。
-本仓库在其上新增了 `arch/`、`trainer/train.py`、`configs/`、`webui/` 与实验体系。
-
-[Apache License 2.0](LICENSE)
+本项目基于 [Apache 2.0 License](LICENSE) 开源。
