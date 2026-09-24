@@ -6,40 +6,36 @@
 
 <div align="center">
 
-![visitors](https://visitor-badge.laobi.icu/badge?page_id=jingyaogong/minimind)
-[![GitHub Repo stars](https://img.shields.io/github/stars/jingyaogong/minimind?style=social)](https://github.com/jingyaogong/minimind/stargazers)
-[![GitHub Code License](https://img.shields.io/github/license/jingyaogong/minimind)](LICENSE)
-[![GitHub last commit](https://img.shields.io/github/last-commit/jingyaogong/minimind)](https://github.com/jingyaogong/minimind/commits/master)
-[![GitHub pull request](https://img.shields.io/badge/PRs-welcome-blue)](https://github.com/jingyaogong/minimind/pulls)
-[![Collection](https://img.shields.io/badge/🤗-MiniMind%20%20Collection-blue)](https://huggingface.co/collections/jingyaogong/minimind-66caf8d999f5c7fa64f399e5)
+# MiniMind-V2
 
-</div>
+**Pluggable architectures × pluggable algorithms** — trying a different attention
+mechanism is a few lines of YAML; switching the training algorithm is one `--algo` flag.
 
-<div align="center">
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.6-ee4c2c)](https://pytorch.org)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776ab)](https://www.python.org)
 
-![GitHub Trend](https://trendshift.io/api/badge/repositories/12586)
+MiniMind-V2 turns the pipeline of "train your own 64M model from scratch" into a
+**pluggable architecture plus pluggable algorithms**. What it takes over is a
+**hard-coded architecture and a pile of copy-pasted training scripts**:
 
-</div>
+- Want to try MLA attention? Edit `model_minimind.py`.
+- Want to try DAPO? Copy `train_grpo.py` and start editing.
+- Fix a bug in the training loop? Fix it again in each of the eight `train_*.py`.
 
-<div align="center">
-  <h3>"The Great Way is Simple"</h3>
-</div>
+V2 turns both of those into parameters:
 
-<div align="center">
+```
+Model structure  ->  arch/           four slots x 18 registered components, YAML-driven
+Training algo    ->  trainer/algos/  16 algorithms, one implementation each, --algo switch
+```
 
-[中文](./README.md) | English
+What this buys is **comparability**: 18 architecture sweeps, two-arm SFT comparisons,
+4 RL algorithms x 2 base models — every arm shares the same forward/backward, so the
+differences are cleanly attributable to the components themselves rather than to
+"this arm happened to have an implementation divergence I didn't notice".
 
-</div>
-
-* This open-source project aims to train MiniMind, an ultra-small language model with about 64M parameters, entirely from scratch with only about RMB 3 in cost and 2 hours of training time.
-* The MiniMind series is intentionally lightweight. The smallest model on the main branch is about $\frac{1}{2700}$ the size of GPT-3, making full training and reproduction feasible even on ordinary personal GPUs.
-* The project provides a minimalist model architecture and an end-to-end LLM training pipeline, covering MoE, data cleaning, pretraining, Supervised Fine-Tuning (SFT), LoRA, RLHF (DPO), RLAIF (PPO / GRPO / CISPO), Tool Use, Agentic RL, Adaptive Thinking, and Model Distillation.
-* MiniMind has also been extended to a vision model [MiniMind-V](https://github.com/jingyaogong/minimind-v), a multimodal Omni model [MiniMind-O](https://github.com/jingyaogong/minimind-o), a diffusion language model (MiniMind-dLM), and a linear attention model (MiniMind-Linear). See [Discussion](https://github.com/jingyaogong/minimind/discussions) for details.
-* All core algorithms are implemented directly in native PyTorch, without relying on high-level abstractions from third-party libraries.
-* MiniMind is both an end-to-end open-source reproduction of the LLM training pipeline and a hands-on tutorial for learning how LLMs are built.
-* We hope this project can provide a reproducible, understandable, and extensible starting point for more people, share the joy of creation, and help move the broader AI community forward.
-
-> Note: This project is released under the Apache 2.0 license and is completely free. "2 hours" refers to the measured time for running `1 epoch` of the SFT stage on a single NVIDIA 3090, while "RMB 3" refers to the corresponding GPU rental cost.
+> Note: This project is released under the Apache 2.0 license and is completely free.
 
 ---
 
@@ -74,6 +70,17 @@
 
 # 📌 Project Introduction
 
+MiniMind-V2 is a **pluggable architecture + pluggable algorithms** project. It turns
+"training a 64M model from scratch" into something you configure rather than copy-paste:
+the model structure lives in `arch/` (four slots x 18 registered components, assembled
+from YAML), and the training algorithm lives in `trainer/algos/` (16 algorithms, one
+implementation each, switched with `--algo`).
+
+The sections below cover the original MiniMind design notes and training recipes that
+this project inherits and builds on. For what is new in V2, see the Chinese
+[README.md](./README.md), which documents the architecture layer, the unified training
+entry point, the configuration system, the Web console and the experiment suite.
+
 The emergence of Large Language Models (LLMs) has drawn unprecedented global attention to AI. ChatGPT, DeepSeek, Qwen, and many other models have impressed people with their remarkable performance, making the impact of this technological wave feel very real. However, models with tens or hundreds of billions of parameters are not only difficult to train on personal devices, but often out of reach even for deployment. Opening the "black box" of large models and truly understanding how they work internally should have been an exciting thing. Unfortunately, most explorations eventually stop at applying techniques such as LoRA to fine-tune existing large models on a few new instructions or specific tasks. This is more like teaching Newton how to use a 21st-century smartphone — interesting, but not quite the original goal of understanding the essence of physics.
 
 At the same time, third-party LLM frameworks and toolkits such as `transformers` / `trl` / `peft` often expose only highly abstract interfaces. With just a dozen lines of code, one can complete the entire pipeline of "load model + load dataset + inference + reinforcement learning" training. This kind of efficient encapsulation is convenient, but it also separates developers from the underlying implementation to some extent, reducing the opportunity to deeply understand the core code of LLMs. I believe that "building an airplane from Lego bricks yourself is far more exciting than flying in first class". A more practical problem is that the internet is also filled with paid courses and marketing content, where so-called AI tutorials are wrapped in flawed and half-understood explanations. For this reason, the original intention of this project is to lower the learning barrier of LLMs as much as possible, so that everyone can start from understanding every line of code and train a tiny language model by hand from scratch. Yes, **training from scratch**, not merely staying at the **inference** level. With a server cost of less than RMB 3, you can personally experience the full process of building a language model from 0 to 1.
@@ -97,7 +104,7 @@ At the same time, third-party LLM frameworks and toolkits such as `transformers`
   with zero build steps and zero CDN dependencies. The lab visualizes every stage of the pipeline plus cross-architecture and
   cross-algorithm comparisons and each algorithm's own metrics; the training console lets you pick configs, override hyperparameters,
   start/stop runs, and charts live metrics parsed from training stdout. The earlier minimal Streamlit WebUI is kept as an optional entry point.
-- Includes experimental extensions: diffusion language model ([dLM](https://github.com/jingyaogong/minimind/discussions/618)) and linear attention model ([Linear Attention](https://github.com/jingyaogong/minimind/discussions/704)), both of which can be further trained from the main autoregressive model.
+- Includes experimental extensions: a diffusion language model (dLM) and a linear attention model (Linear Attention), both of which can be further trained from the main autoregressive model.
 
 #### 🎉 Released Model List
 
@@ -152,7 +159,7 @@ At the same time, third-party LLM frameworks and toolkits such as `transformers`
 <summary> <b>2025-04-26</b> </summary>
 
 - Major update
-- For compatibility needs, visit [🔗Old Repository Content🔗](https://github.com/jingyaogong/minimind/tree/7da201a944a90ed49daef8a0265c959288dff83a).
+- For compatibility needs, check out the corresponding upstream tag for that release.
 - MiniMind model parameters completely renamed, aligned with Transformers library models (unified naming).
 - generate method refactored, inheriting from GenerationMixin class.
 - 🔥Supports popular third-party ecosystems such as llama.cpp, vllm, ollama.
@@ -175,7 +182,7 @@ After this update, maintenance for the entire `minimind-v1` series will be disco
 **2025-02-09**
 - Major update since release, Release minimind2 Series.
 - Code almost entirely refactored, using a more concise and clear unified structure.
-  For compatibility needs with old code, visit [🔗Old Repository Content🔗](https://github.com/jingyaogong/minimind/tree/6e9cd28ef9b34a0a10afbdf6f59e65cb6e628efb).
+  For compatibility needs with old code, check out the corresponding upstream tag for that release.
 - Eliminated data preprocessing steps. Unified dataset format, switched to `jsonl` format to avoid dataset download confusion issues.
 - minimind2 series significantly improved performance compared to MiniMind-V1.
 - Minor issues: {kv-cache implementation more standard, MoE load balancing loss now considered, etc.}
@@ -187,8 +194,7 @@ After this update, maintenance for the entire `minimind-v1` series will be disco
 - Updated benchmark test performance results of minimind2 vs third-party models on more LLM leaderboards.
 
 **2024-10-05**
-- Extended multimodal capability for MiniMind --- Vision
-- Visit the sibling project [minimind-v](https://github.com/jingyaogong/minimind-v) for details!
+- Extended multimodal capability for MiniMind --- Vision.
 
 **2024-09-27**
 - 09-27 updated pretrain dataset preprocessing method, to ensure text integrity, abandoned preprocessing into .bin format for training (slight sacrifice in training speed).
@@ -230,7 +236,7 @@ After this update, maintenance for the entire `minimind-v1` series will be disco
 
 ```bash
 # Clone repository and install dependencies
-git clone --depth 1 https://github.com/jingyaogong/minimind
+git clone https://github.com/Bozheng-Li/MInimind-V2.git
 cd minimind && pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 ```
 
@@ -1934,11 +1940,9 @@ Alternatively, test it with the mobile app.
 
 ## 👨‍💻 More Content
 
-* <a href="https://github.com/jingyaogong/minimind/discussions/618">🔗Fine-tuning Diffusion Language Models from MiniMind-LLM</a>
-
-* <a href="https://github.com/jingyaogong/minimind/discussions/611">🔗Description of the Model's generate Method</a>
-
-* <a href="https://github.com/jingyaogong/minimind/discussions/704">🔗Training Linear Attention Models from MiniMind</a>
+* Fine-tuning Diffusion Language Models from MiniMind-LLM
+* Description of the Model's generate Method
+* Training Linear Attention Models from MiniMind
 
 # 📌 Acknowledgments
 
@@ -1947,25 +1951,20 @@ Alternatively, test it with the mobile app.
 > The documentation is long, and omissions are inevitable. Feedback via Issues or PRs is welcome to help improve the project together.<br/>
 > Your support and suggestions are important driving forces for the continuous iteration of this project!
 
-## 🤝[Contributors](https://github.com/jingyaogong/minimind/graphs/contributors)
-
-<a href="https://github.com/jingyaogong/minimind/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=jingyaogong/minimind" />
-</a>
-
 ## 😊Acknowledgments
 
-Thanks to the following contributors for sharing training notes, data processing experience, tutorials, and code walkthroughs:
+Thanks to the MiniMind contributors for sharing training notes, data processing
+experience, tutorials, and code walkthroughs:
 
-* [@ipfgao](https://github.com/ipfgao): [🔗Training Step Records](https://github.com/jingyaogong/minimind/issues/26)
+* [@ipfgao](https://github.com/ipfgao): Training Step Records
 
-* [@WangRongsheng](https://github.com/WangRongsheng): [🔗Large Dataset Preprocessing](https://github.com/jingyaogong/minimind/issues/39)
+* [@WangRongsheng](https://github.com/WangRongsheng): Large Dataset Preprocessing
 
-* [@pengqianhan](https://github.com/pengqianhan): [🔗A Concise Tutorial](https://github.com/jingyaogong/minimind/issues/73)
+* [@pengqianhan](https://github.com/pengqianhan): A Concise Tutorial
 
-* [@RyanSunn](https://github.com/RyanSunn): [🔗Inference Process Learning Notes](https://github.com/jingyaogong/minimind/issues/75)
+* [@RyanSunn](https://github.com/RyanSunn): Inference Process Learning Notes
 
-* [@Nijikadesu](https://github.com/Nijikadesu): [🔗Breaking Down Project Code in Interactive Notebook Format](https://github.com/jingyaogong/minimind/issues/213)
+* [@Nijikadesu](https://github.com/Nijikadesu): Breaking Down Project Code in Interactive Notebook Format
 
 * [@jaylearnstocode](https://github.com/jaylearnstocode): [🔗Visualization of Model Architecture, Attention Mechanisms, and Training Pipelines](https://llm-visualization-minimind.vercel.app/)
 
@@ -1985,20 +1984,6 @@ Thanks also to the following papers and projects:
 - [https://github.com/xusenlinzy/api-for-open-llm](https://github.com/xusenlinzy/api-for-open-llm)
 - [https://github.com/HqWu-HITCS/Awesome-Chinese-LLM](https://github.com/HqWu-HITCS/Awesome-Chinese-LLM)
 
-
-## 🫶Supporters
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://bytecrank.com/nastyox/reporoster/php/forkersSVG.php?user=jingyaogong&repo=minimind&theme=dark"/>
-  <source media="(prefers-color-scheme: light)" srcset="https://bytecrank.com/nastyox/reporoster/php/forkersSVG.php?user=jingyaogong&repo=minimind"/>
-  <img alt="Fork poster" src="https://bytecrank.com/nastyox/reporoster/php/forkersSVG.php?user=jingyaogong&repo=minimind&theme=dark"/>
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=jingyaogong/minimind&type=date&theme=dark&legend=top-left&sealed_token=DK6jy_uvw2AHIK0S4VZLf6snWIQ06jGzz3QiwVmXBGDvickcQgJGSdazdGxjRQZuj8Hr3GfS_REB9ohoK8NWVsmukeOQiT4soChw3_19yyPVwvWzBp66yMYWlvOYy9sv60cMSntByiUTcyp4MrRiMm1JD1MSC8NJ-Z9qhR9uJGl2AU7w-OGlyKQzN7Xa"/>
-  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=jingyaogong/minimind&type=date&legend=top-left&sealed_token=DK6jy_uvw2AHIK0S4VZLf6snWIQ06jGzz3QiwVmXBGDvickcQgJGSdazdGxjRQZuj8Hr3GfS_REB9ohoK8NWVsmukeOQiT4soChw3_19yyPVwvWzBp66yMYWlvOYy9sv60cMSntByiUTcyp4MrRiMm1JD1MSC8NJ-Z9qhR9uJGl2AU7w-OGlyKQzN7Xa"/>
-  <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=jingyaogong/minimind&type=date&legend=top-left&sealed_token=DK6jy_uvw2AHIK0S4VZLf6snWIQ06jGzz3QiwVmXBGDvickcQgJGSdazdGxjRQZuj8Hr3GfS_REB9ohoK8NWVsmukeOQiT4soChw3_19yyPVwvWzBp66yMYWlvOYy9sv60cMSntByiUTcyp4MrRiMm1JD1MSC8NJ-Z9qhR9uJGl2AU7w-OGlyKQzN7Xa"/>
-</picture>
 
 ## 🎉 MiniMind Related Achievements
 
@@ -2027,7 +2012,9 @@ This model has served as a stepping stone for several gratifying research outcom
 
 # 🎓 Citation
 
-If `MiniMind` has been helpful to your research or work, feel free to cite:
+This project builds on the model design, training data and evaluation baselines of the
+MiniMind series. If you use this repository in your research, please cite the upstream
+work as well:
 
 ```bibtex
 @misc{minimind,

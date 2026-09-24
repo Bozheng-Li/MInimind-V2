@@ -17,8 +17,8 @@
 
 ## 这是什么
 
-MiniMind-V2 是对 [MiniMind](https://github.com/jingyaogong/minimind) 的一次**架构级重构**。
-原项目已经把「从 0 训一个 64M 小模型」这条链路跑通了，但它是一份**写死的架构 + 一摞互相复制的训练脚本**：
+MiniMind-V2 把「从 0 训一个 64M 小模型」这条链路做成了**可插拔的架构 + 可插拔的算法**。
+它接手的是一份**写死的架构 + 一摞互相复制的训练脚本**：
 
 - 想试 MLA 注意力？得去改 `model_minimind.py`。
 - 想试 DAPO？得复制一份 `train_grpo.py` 再改。
@@ -35,10 +35,6 @@ V2 把这两件事都抽成了参数：
 所有对比组共用同一套 forward/backward，差异才干净地归因到组件本身，
 而不是「这组比那组多了一个我没注意到的实现分歧」。
 
-> **本项目基于 [jingyaogong/minimind](https://github.com/jingyaogong/minimind)
-> 演进，遵循 Apache 2.0 协议。** 数据、评测口径、模型设计思想均继承自上游；
-> 架构抽象层、统一训练入口、实验体系为本仓库新增。
-
 ---
 
 ## 目录
@@ -54,6 +50,7 @@ V2 把这两件事都抽成了参数：
 - [九、部署](#九部署)
 - [十、目录结构](#十目录结构)
 - [十一、常见坑](#十一常见坑)
+- [引用](#引用)
 - [致谢 / License](#致谢)
 
 ---
@@ -712,13 +709,29 @@ minimind/
 
 ---
 
+## 引用
+
+本项目的模型结构、训练数据与评测口径继承自 MiniMind 系列工作。
+如果你在研究中用到了本仓库，除引用本仓库外，也请一并引用上游：
+
+```bibtex
+@misc{minimind,
+  title = {MiniMind: Train a Tiny LLM from Scratch},
+  author = {Jingyao Gong},
+  year = {2024},
+  url = {https://github.com/jingyaogong/minimind},
+  note = {GitHub repository}
+}
+```
+
 ## 致谢
 
-本项目基于 [jingyaogong/minimind](https://github.com/jingyaogong/minimind) 演进，
-遵循 Apache 2.0 协议。感谢原作者与上游贡献者把「从 0 训一个小模型」这条链路开源出来。
+感谢 [jingyaogong/minimind](https://github.com/jingyaogong/minimind) 的作者与
+上游贡献者，把「从 0 训一个小模型」这条链路完整开源出来 —— 本项目的模型设计、
+数据与评测基线均建立在其之上。
 
-模型结构与训练数据来自上游；架构抽象层（`arch/`）、统一训练入口（`trainer/train.py`）、
-配置系统（`configs/`）、Web 控制台（`webui/`）与实验体系为本仓库新增。
+架构抽象层（`arch/`）、统一训练入口（`trainer/train.py`）、配置系统（`configs/`）、
+Web 控制台（`webui/`）与实验体系为本仓库新增。
 
 ## License
 
