@@ -1,0 +1,32 @@
+# =============================================================================
+# 预训练（快速版）：mini 数据集 + 门控注意力 + DeepSeekMoE
+# -----------------------------------------------------------------------------
+# 与 pretrain_moe.yaml 的唯一区别是**数据量**：换成 pretrain_t2t_mini.jsonl
+# （1.2G，约为完整集 7.8G 的 1/6.5），因此 1 epoch 从 ~27 小时压到 **约 4 小时**。
+# 架构、超参、随机种子都一致，所以两者产出的模型可直接对比。
+#
+# 为什么需要它：本环境的 NCCL 只有 1.6 GB/s（正常应 10~100+），而 MoE 有 214M 参数、
+# 每步梯度同步约 856MB，通信开销吃掉了多卡并行收益 —— 全量 1 epoch 要 27 小时。
+#
+# ⚠️ max_seq_len 说明：README 对 mini 数据推荐 768。这里用 380 是为了把时间控制在
+#    ~4 小时；若想更好利用 mini 的长样本，改成 768 会变成 ~8.5 小时。
+#
+# 用法：
+#   cd trainer && torchrun --nproc_per_node 2 train.py \
+#       --algo pretrain --config configs/pretrain_moe_mini.yaml --accumulation_steps 16
+# =============================================================================
+defaults: pretrain_moe.yaml
+
+data:
+  # mini 版的四份拆分（与完整版同一套配比，见 pretrain_moe.yaml 的说明）
+  path: dataset/pretrain
+  mix:
+    pretrain_t2t_mini.prose.jsonl: 0.70
+    pretrain_t2t_mini.qa.jsonl:    0.10
+    pretrain_t2t_mini.en.jsonl:    0.15
+    pretrain_t2t_mini.code.jsonl:  0.05
+  max_seq_len: 380
+
+train:
+  save_weight: pretrain_moe_mini       # -> test/out/pretrain_moe_mini_768_moe.pth
+  epochs: 1

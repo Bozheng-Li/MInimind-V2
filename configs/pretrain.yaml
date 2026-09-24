@@ -1,0 +1,37 @@
+# =============================================================================
+# 预训练配置
+# -----------------------------------------------------------------------------
+# defaults 引用的 base.yaml 提供模型结构，本文件叠加数据与训练超参。
+# 命名偏好：需要在新组件上做预训练实验时，只需覆盖下面的 attention / feedforward 等段。
+#
+# 这些数值与重构前 train_pretrain.py 的 argparse 默认值**逐项一致**，
+# 且命令行参数仍可覆盖它们（如 --epochs 3 会压过此处的 epochs: 2）。
+# =============================================================================
+defaults: base.yaml
+
+# ------------------------------ 数据 ------------------------------
+data:
+  # mini 版的四份拆分（与完整版同一套配比，见 pretrain_moe.yaml 的说明）
+  path: dataset/pretrain
+  mix:
+    pretrain_t2t_mini.prose.jsonl: 0.70
+    pretrain_t2t_mini.qa.jsonl:    0.10
+    pretrain_t2t_mini.en.jsonl:    0.15
+    pretrain_t2t_mini.code.jsonl:  0.05
+  max_seq_len: 340          # token 数（中文约 1.5~1.7 字符/token）
+
+# ---------------------------- 训练超参 ----------------------------
+train:
+  save_dir: out
+  save_weight: pretrain
+  epochs: 2
+  batch_size: 32
+  learning_rate: 5.0e-4
+  accumulation_steps: 8
+  grad_clip: 1.0
+  log_interval: 100
+  save_interval: 1000
+  num_workers: 8
+  dtype: bfloat16
+  seed: 42
+  from_weight: none         # none = 从零开始

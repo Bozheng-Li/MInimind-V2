@@ -1,0 +1,181 @@
+# =============================================================================
+# 强化学习（RLAIF）配置
+# -----------------------------------------------------------------------------
+# 离线偏好优化与 PPO / GRPO / DAPO / RLOO / Agentic RL 共用这份配置：
+#   - train / data 段是全部离线偏好与在线 RL 算法共享的部分
+#   - algo 段按算法分开存放各自的专属超参（脚本用 --algo 指定）
+#
+# 数值与重构前 train_grpo.py / train_ppo.py / train_agent.py 的
+# argparse 默认值逐项一致，命令行仍可覆盖。
+# =============================================================================
+defaults: base.yaml
+
+# ------------------------------ 架构 ------------------------------
+# RL 的 rollout 一定产生变长序列（左 padding 的 prompt + 右 padding 的补全），
+# 而 SDPA 快路径要求 attention_mask 全 1 —— 不开这个开关就会退回 eager 路径，
+# 物化 [B, H, L, L] 的分数矩阵并留到 backward：GRPO 一批 12 条 1792 token 的序列
+# 每层就是 GB 级，24G 卡上直接 OOM（实测 17.5G 峰值 + 第 2 步爆）。
+# 开启后把「因果 + padding」合成布尔掩码交给 SDPA，实测真实 token 位与 eager
+# 的差为 1.8e-07（fp32 噪声级），只有 padding 位的输出不同 —— 而那些位置不参与
+# loss、也不参与采样。详见 arch/attention/gqa.py 的同名分支。
+attention:
+  flash_attn_masked: true
+
+# ------------------------------ 数据 ------------------------------
+data:
+  path: dataset/rl/rlaif.jsonl
+  max_seq_len: 768
+
+# ---------------------------- 训练超参 ----------------------------
+train:
+  save_dir: out
+  epochs: 1
+  batch_size: 2
+  learning_rate: 3.0e-7
+  accumulation_steps: 1
+  grad_clip: 1.0
+  log_interval: 1
+  save_interval: 10
+  num_workers: 8
+  dtype: bfloat16
+  seed: 42
+  from_weight: full_sft
+  reward_model_path: ../internlm2-1_8b-reward
+  rollout_engine: torch          # torch | sglang
+  sglang_base_url: http://localhost:8998
+  sglang_model_path: model
+  # 注：sglang_model_path / sglang_shared_path 不在此处统一设置 ——
+  # 前者沿用 argparse 默认的 ../model（相对 trainer/），
+  # 后者三个算法各不相同，放在各自的 algo 段里。
+
+# ------------------------ 各算法专属超参 ------------------------
+algo:
+  # DPO（离线偏好优化，无需 reward model / rollout）
+  dpo:
+    save_weight: dpo
+    data_path: dataset/rl/dpo.jsonl
+    max_seq_len: 1024
+    epochs: 1
+    batch_size: 4
+    learning_rate: 4.0e-8        # 建议 <=5e-8，避免遗忘
+    log_interval: 100
+    save_interval: 100
+    beta: 0.15
+
+  # IPO：与 DPO 共用 reference，但平方目标有有限最优偏好间隔。
+  ipo:
+    save_weight: ipo
+    data_path: dataset/rl/dpo.jsonl
+    max_seq_len: 1024
+    epochs: 1
+    batch_size: 4
+    learning_rate: 4.0e-8
+    beta: 0.15
+
+  # SimPO / CPO / ORPO：reference-free，少占一份模型显存。
+  simpo:
+    save_weight: simpo
+    data_path: dataset/rl/dpo.jsonl
+    max_seq_len: 1024
+    batch_size: 4
+    learning_rate: 5.0e-8
+    beta: 2.0
+    simpo_gamma: 0.5
+
+  cpo:
+    save_weight: cpo
+    data_path: dataset/rl/dpo.jsonl
+    max_seq_len: 1024
+    batch_size: 4
+    learning_rate: 5.0e-8
+    beta: 0.1
+    cpo_alpha: 1.0
+
+  orpo:
+    save_weight: orpo
+    data_path: dataset/rl/dpo.jsonl
+    max_seq_len: 1024
+    batch_size: 4
+    learning_rate: 5.0e-8
+    orpo_lambda: 0.1
+
+  # Paired-KTO：当前数据仍用 chosen/rejected 对，内部拆成合意/不合意两类样本。
+  kto:
+    save_weight: kto
+    data_path: dataset/rl/dpo.jsonl
+    max_seq_len: 1024
+    batch_size: 4
+    learning_rate: 4.0e-8
+    beta: 0.1
+    kto_desirable_weight: 1.0
+    kto_undesirable_weight: 1.0
+
+  # GRPO / CISPO（loss_type 默认 cispo）
+  grpo:
+    save_weight: grpo
+    num_generations: 6
+    beta: 0.1
+    loss_type: cispo
+    epsilon: 0.2
+    epsilon_high: 5.0
+    max_gen_len: 1024
+    thinking_ratio: 0.9
+    sglang_shared_path: ./sglang_ckpt_grpo
+
+  # DAPO：非对称 Clip-Higher + 动态采样 + token-level loss + 超长惩罚。
+  dapo:
+    save_weight: dapo
+    num_generations: 8
+    loss_type: grpo
+    epsilon: 0.2
+    dapo_epsilon_high: 0.28
+    dapo_max_resample: 4
+    dapo_reward_std_threshold: 1.0e-6
+    dapo_overlong_buffer: 128
+    dapo_overlong_penalty: 1.0
+    dapo_kl_coef: 0.0
+    max_gen_len: 1024
+    thinking_ratio: 0.9
+    sglang_shared_path: ./sglang_ckpt_dapo
+
+  # RLOO：同一 prompt 至少两条采样，使用 leave-one-out reward baseline。
+  rloo:
+    save_weight: rloo
+    num_generations: 4
+    beta: 0.05
+    loss_type: grpo
+    epsilon: 0.2
+    max_gen_len: 1024
+    thinking_ratio: 0.9
+    sglang_shared_path: ./sglang_ckpt_rloo
+
+  # PPO（Actor + Critic，含 GAE 与 KL 早停）
+  ppo:
+    save_weight: ppo_actor
+    clip_epsilon: 0.2
+    vf_coef: 0.5
+    kl_coef: 0.02
+    gamma: 1.0
+    lam: 0.95
+    cliprange_value: 0.2
+    ppo_update_iters: 2
+    early_stop_kl: 0.25
+    mini_batch_size: 2
+    max_gen_len: 1024
+    thinking_ratio: 0.9
+    sglang_shared_path: ./sglang_ckpt_ppo
+
+  # Agentic RL（多轮工具调用，奖励整轮延迟结算）
+  agent:
+    save_weight: agent
+    data_path: dataset/rl/agent_rl.jsonl
+    max_seq_len: 1024          # 与 grpo/ppo 不同，agent 的默认截断长度更大
+    num_generations: 4
+    beta: 0.1
+    loss_type: cispo
+    epsilon: 0.2
+    epsilon_high: 5.0
+    max_gen_len: 768
+    max_total_len: 2500
+    thinking_ratio: 0.1
+    sglang_shared_path: ./sglang_ckpt_agent

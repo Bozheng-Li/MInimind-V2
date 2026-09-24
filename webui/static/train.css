@@ -1,0 +1,352 @@
+/* ==========================================================================
+   训练控制台
+   ========================================================================== */
+body.lab-body { overflow: hidden; }
+
+.tc {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+}
+
+.tc-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 22px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.tc-top .brand-mark { color: var(--accent); display: flex; }
+.tc-top h1 { margin: 0; font-size: 16px; letter-spacing: -.015em; }
+.tc-top .sub { font-size: 11.5px; color: var(--ink-3); }
+.tc-top .spacer { flex: 1; }
+.tc-top .chip {
+  font-size: 11.5px; color: var(--ink-3);
+  font-family: var(--mono);
+  border: 1px solid var(--line);
+  border-radius: 999px; padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.tc-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 396px;
+  min-height: 0;
+}
+.tc-main { overflow-y: auto; padding: 20px 22px 80px; min-width: 0; }
+.tc-aside {
+  border-left: 1px solid var(--line);
+  background: var(--surface-2);
+  overflow-y: auto;
+  min-width: 0;
+}
+.tc-aside-inner { padding: 16px 16px 60px; display: flex; flex-direction: column; gap: 13px; }
+
+/* ============================ 算法选择 ============================ */
+.algo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 10px; }
+.algo-card {
+  position: relative;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease;
+}
+.algo-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-sm); }
+.algo-card[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+.algo-card .nm { font-size: 13px; font-weight: 620; display: flex; align-items: center; gap: 7px; }
+.algo-card .st { font-size: 10px; color: var(--ink-3); font-family: var(--mono); }
+.algo-card .ds { font-size: 11px; color: var(--ink-2); line-height: 1.55; }
+.algo-card .dotmark { width: 8px; height: 8px; border-radius: 3px; flex: none; }
+
+/* ============================ 配置选择 ============================ */
+.cfg-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 9px; }
+.cfg-pick {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  cursor: pointer;
+  font: inherit; text-align: left;
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+.cfg-pick:hover { border-color: var(--line-strong); }
+.cfg-pick[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-ring); }
+.cfg-pick .rad {
+  flex: none; width: 15px; height: 15px; margin-top: 2px;
+  border: 1.6px solid var(--line-strong); border-radius: 50%;
+  display: grid; place-items: center;
+}
+.cfg-pick[aria-pressed="true"] .rad { border-color: var(--accent); }
+.cfg-pick[aria-pressed="true"] .rad::after {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+}
+.cfg-pick .txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cfg-pick .nm { font-size: 12.5px; font-weight: 620; font-family: var(--mono); }
+.cfg-pick .ds { font-size: 11px; color: var(--ink-2); line-height: 1.5; }
+.cfg-pick .pt { font-size: 10px; color: var(--ink-3); font-family: var(--mono); word-break: break-all; }
+.cfg-pick .slotrow { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.cfg-pick .slotrow span {
+  font-size: 9.5px; font-family: var(--mono);
+  background: var(--panel-2); border-radius: 5px; padding: 0 5px;
+  color: var(--ink-2);
+}
+
+/* ============================ 参数分组 ============================ */
+.pgroup { border-top: 1px dashed var(--line); padding-top: 14px; margin-top: 14px; }
+.pgroup:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+.pgroup > .ttl {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  color: var(--ink-3); text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.pgroup > .ttl .hint { font-weight: 400; letter-spacing: 0; text-transform: none; font-family: var(--font); }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(216px, 1fr)); gap: 12px 14px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field > label {
+  font-size: 11.5px; color: var(--ink-2);
+  display: flex; align-items: center; gap: 6px;
+}
+.field > label .flag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.field > label .def { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.field .note { font-size: 10.5px; color: var(--ink-3); line-height: 1.5; }
+.field input[type="text"], .field input[type="number"], .field select {
+  width: 100%;
+  padding: 6.5px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-family: var(--mono);
+  transition: border-color .13s ease, box-shadow .13s ease;
+}
+.field input:focus, .field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2.5px var(--accent-ring);
+}
+.field input.changed { border-color: var(--accent); background: var(--accent-soft); }
+.field.switch { flex-direction: row; align-items: center; gap: 9px; min-height: 34px; }
+.field.switch label { font-size: 12px; color: var(--ink); cursor: pointer; }
+.field.switch input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+.seg-ctl { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+.seg-ctl button {
+  border: 0; background: var(--panel); color: var(--ink-2);
+  font: inherit; font-size: 12px; padding: 6px 12px; cursor: pointer;
+  transition: background .13s ease, color .13s ease;
+}
+.seg-ctl button + button { border-left: 1px solid var(--line); }
+.seg-ctl button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+/* ============================ 命令预览 ============================ */
+.preview {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  overflow: hidden;
+}
+.preview-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 11px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px; color: var(--ink-2);
+}
+.preview-head .spacer { flex: 1; }
+.preview-head .mini {
+  border: 0; background: none; color: var(--accent);
+  font: inherit; font-size: 11px; cursor: pointer; padding: 0;
+}
+.preview-head .mini:hover { text-decoration: underline; }
+.preview-body {
+  margin: 0; padding: 10px 12px;
+  font-family: var(--mono); font-size: 11px; line-height: 1.62;
+  white-space: pre-wrap; word-break: break-all;
+  color: var(--ink-2);
+  max-height: 220px; overflow-y: auto;
+}
+.preview-body .fl { color: var(--accent); }
+.preview-body .va { color: var(--ink); }
+.preview-body .ex { color: var(--ink-3); }
+
+/* ============================ 监控面板 ============================ */
+.jobcard {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  overflow: hidden;
+}
+.jobcard-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+}
+.jobcard-head .id { font-family: var(--mono); font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobcard-head .spacer { flex: 1; }
+.jobcard-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 9px; }
+.joblog {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 340px; overflow-y: auto;
+  font-family: var(--mono); font-size: 11px; line-height: 1.58;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
+}
+.joblog:empty::after { content: "等待日志输出…"; color: var(--ink-3); }
+.jobs-list { display: flex; flex-direction: column; gap: 9px; }
+
+/* -------------------------- 实时指标（日志解析） -------------------------- */
+/* 作业卡里由日志增量解析出来的指标块。整块与上面的 meta 行用虚线分开，
+   因为它是「从 stdout 现读的」，与上面那份「启动时落库的 meta」不是同一来源。 */
+.jobmetrics {
+  display: flex; flex-direction: column; gap: 10px;
+  padding-top: 2px;
+  border-top: 1px dashed var(--line);
+}
+/* 每个指标一张自己的小图（不同量纲不合并）。列宽下限 240px：窄了就退成单列，
+   而不是把坐标轴挤没 —— lineChart 的 viewBox 按 host.clientWidth 定，
+   横向再压就只剩两条刻度。 */
+.jobcharts {
+  display: grid; gap: 10px 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.jobchart { min-width: 0; }
+.jobchart-t {
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 10.5px; color: var(--ink-3);
+  margin-bottom: 1px;
+}
+.jobchart-t .viz-svg { display: block; }
+
+/* 「本次算法在 stdout 声明的指标」—— 指标名列表本身是结论的一部分
+   （不同算法打出来的键不一样），所以默认收起但摘要里写明个数。 */
+.jobkeys { font-size: 11px; }
+.jobkeys > summary {
+  cursor: pointer; user-select: none;
+  color: var(--ink-3); font-size: 10.5px;
+  padding: 3px 0;
+  list-style: none;
+}
+.jobkeys > summary::-webkit-details-marker { display: none; }
+.jobkeys > summary::before { content: "▸ "; color: var(--ink-3); }
+.jobkeys[open] > summary::before { content: "▾ "; }
+.jobkeys > summary:hover { color: var(--ink); }
+.keychips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.keychip {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  font-size: 10.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.keychip b { font-weight: 600; color: var(--ink); }
+.keychip span { font-family: var(--mono); font-size: 9.5px; color: var(--ink-3); }
+.jobkeys .tile-foot { line-height: 1.6; }
+.jobkeys .tile-foot code {
+  font-family: var(--mono); font-size: 10px;
+  background: var(--panel-2); border-radius: 4px; padding: 0 3px;
+}
+
+/* 作业 ↔ 训练登记。命中才渲染（匹配不上不显示），所以这里不需要「空」态。 */
+.joblink {
+  font-family: var(--mono); font-size: 10.5px;
+  color: var(--accent); text-decoration: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.joblink:hover { text-decoration: underline; }
+
+/* ============================= 组件复用 ============================= */
+.lcard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+.lcard-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 13px; }
+.lcard-head h3 { margin: 0; font-size: 13.5px; }
+.lcard-head .sub { font-size: 11.5px; color: var(--ink-3); }
+.lcard-head .spacer { flex: 1; }
+.tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.tile {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 11px 13px;
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.tile-label { font-size: 10.5px; color: var(--ink-3); }
+.tile-value {
+  font-size: 19px; font-weight: 620; letter-spacing: -.02em;
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  display: flex; align-items: baseline; gap: 5px;
+}
+.tile-value .unit { font-size: 11px; font-weight: 500; color: var(--ink-3); font-family: var(--font); }
+.tile-foot { font-size: 10.5px; color: var(--ink-3); }
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 7px; border-radius: 6px;
+  font-size: 10.5px; font-family: var(--mono);
+  border: 1px solid transparent; white-space: nowrap;
+}
+.badge.ok { color: var(--ok); background: var(--ok-soft); }
+.badge.warn { color: var(--warn); background: var(--warn-soft); }
+.badge.bad { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.badge.mute { color: var(--ink-3); background: var(--panel-2); }
+.badge.acc { color: var(--accent); background: var(--accent-soft); }
+.badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.live-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ok); margin-right: 5px;
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.notice {
+  display: flex; gap: 9px; align-items: flex-start;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  font-size: 11.5px; line-height: 1.62;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-2);
+}
+.notice.warn { border-color: color-mix(in srgb, var(--warn) 34%, var(--line)); background: var(--warn-soft); color: var(--ink); }
+.notice.bad { border-color: color-mix(in srgb, var(--danger) 34%, var(--line)); background: color-mix(in srgb, var(--danger) 8%, transparent); color: var(--ink); }
+.notice .ic { flex: none; margin-top: 1px; }
+.meter-row { display: flex; flex-direction: column; gap: 4px; }
+.meter-row-top { display: flex; align-items: baseline; gap: 8px; font-size: 11px; color: var(--ink-2); }
+.meter-row-top .v { margin-left: auto; font-family: var(--mono); color: var(--ink); font-weight: 600; }
+.meter-track { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.meter-fill { height: 100%; border-radius: 999px; transition: width .4s var(--ease); }
+.toast-wrap { position: fixed; right: 20px; bottom: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  padding: 9px 14px; border-radius: 10px;
+  background: var(--panel); border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-lg); font-size: 12.5px; color: var(--ink);
+  max-width: 400px; animation: rise .2s var(--ease);
+}
+.toast.bad { border-color: color-mix(in srgb, var(--danger) 40%, var(--line-strong)); }
+.toast.ok { border-color: color-mix(in srgb, var(--ok) 40%, var(--line-strong)); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.empty-note { padding: 22px 16px; text-align: center; color: var(--ink-3); font-size: 12px; line-height: 1.7; }
+
+@media (max-width: 1180px) {
+  .tc-body { grid-template-columns: 1fr; }
+  .tc-aside { border-left: 0; border-top: 1px solid var(--line); }
+}

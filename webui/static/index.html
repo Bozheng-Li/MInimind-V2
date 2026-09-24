@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>MiniMind · 对话</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/viz.css">
+<link rel="stylesheet" href="/static/lab.css">
+<link rel="stylesheet" href="/static/chat.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M9 22V10l7 8 7-8v12' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+</head>
+<body class="lab-body">
+<div class="chat-app" id="chat-app">
+
+  <div class="scrim" id="scrim" hidden></div>
+
+  <!-- ============================== 侧栏 ============================== -->
+  <aside class="lab-side chat-side" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="26" height="26"><rect width="32" height="32" rx="9" fill="currentColor"/><path d="M9 22V10l7 8 7-8v12" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="brand-text">
+        <strong>MiniMind</strong>
+        <span>架构感知推理面板</span>
+      </div>
+      <button class="icon-btn only-mobile" id="close-sidebar" title="收起侧栏" aria-label="收起侧栏">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+      </button>
+    </div>
+
+    <nav class="lab-nav" id="chat-nav" aria-label="对话导航">
+      <span class="nav-group">会话</span>
+      <button data-act="new" id="new-chat">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        新对话
+      </button>
+      <button data-act="clear" id="clear-chat">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        清空对话
+        <span class="nav-badge" id="nav-msgs"></span>
+      </button>
+      <button data-act="export-md" id="export-md">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 4v10m0 0l-3.5-3.5M12 14l3.5-3.5M5 18h14" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        导出 Markdown
+      </button>
+      <button data-act="export-json" id="export-json">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M9 5H7v14h2M15 5h2v14h-2" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        导出 JSON
+      </button>
+
+      <span class="nav-group">控制台</span>
+      <button data-dock="model" aria-current="true">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm0 0v9m8-4.5L12 12 4 7.5" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg>
+        模型与权重
+      </button>
+      <button data-dock="params">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M5 8h9M17 8h2M5 16h2M10 16h9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="15" cy="8" r="2.2" stroke="currentColor" stroke-width="1.7" fill="none"/><circle cx="8" cy="16" r="2.2" stroke="currentColor" stroke-width="1.7" fill="none"/></svg>
+        采样参数
+      </button>
+      <button data-dock="origin">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 5h16M4 12h10M4 19h7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="17.5" cy="12" r="2.2" stroke="currentColor" stroke-width="1.7" fill="none"/><circle cx="14.5" cy="19" r="2.2" stroke="currentColor" stroke-width="1.7" fill="none"/></svg>
+        训练来源
+      </button>
+      <button data-dock="skill">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 4l2.2 4.8 5.3.6-3.9 3.6 1.1 5.2L12 15.6 7.3 18.2l1.1-5.2L4.5 9.4l5.3-.6L12 4z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+        能力开关
+        <span class="nav-badge" id="nav-tools"></span>
+      </button>
+      <button data-dock="runtime">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M9 3v7M15 3v7M6 10h12v4a6 6 0 01-6 6 6 6 0 01-6-6v-4zM12 20v1.5" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        运行环境
+      </button>
+    </nav>
+
+    <div class="lab-side-foot">
+      <a class="btn primary block" href="/lab">
+        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M4 13h6V4H4v9zm0 7h6v-4H4v4zm10 0h6v-9h-6v9zm0-16v4h6V4h-6z" fill="currentColor"/></svg>
+        进入实验台
+      </a>
+      <a class="btn ghost block" href="/train">
+        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M8 5l11 7-11 7V5z" fill="currentColor"/></svg>
+        训练控制台
+      </a>
+      <div class="stat-line" id="sidebar-stat">尚未加载模型</div>
+      <div class="conn-row">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">连接中…</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============================== 主区 ============================== -->
+  <main class="lab-main chat-main">
+    <header class="lab-top">
+      <button class="icon-btn only-mobile" id="open-sidebar" title="展开侧栏" aria-label="展开侧栏">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+      </button>
+      <h1 id="chat-title">新对话</h1>
+      <span class="chip" id="model-chip">未加载模型</span>
+      <span class="spacer"></span>
+      <span class="chip" id="chat-live" title="实时资源占用"><span class="live-dot"></span>—</span>
+      <button class="icon-btn" id="dock-toggle" title="展开 / 收起右侧控制台" aria-label="展开或收起右侧控制台" aria-pressed="true">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v14H4zM15 5v14" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="icon-btn" id="theme-toggle" title="切换深浅色主题" aria-label="切换主题">
+        <svg class="i-sun" viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" width="18" height="18"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg>
+      </button>
+    </header>
+
+    <section class="chat" id="chat" tabindex="-1">
+      <div class="empty" id="empty-state">
+        <div class="empty-mark">
+          <svg viewBox="0 0 32 32" width="44" height="44"><rect width="32" height="32" rx="9" fill="currentColor"/><path d="M9 22V10l7 8 7-8v12" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h2>开始和 MiniMind 对话</h2>
+        <p>原生 torch 权重 · 架构感知加载 · 流式输出 · 思考链 · 工具调用</p>
+        <div class="suggestions" id="suggestions">
+          <button data-prompt="用一句话介绍你自己">用一句话介绍你自己</button>
+          <button data-prompt="计算 (23 * 7 + 11) / 4 等于多少？">算一下 (23*7+11)/4</button>
+          <button data-prompt="写一个 Python 快速排序函数，并用注释解释每一行">写个快速排序</button>
+          <button data-prompt="现在几点了？">现在几点了？</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="composer-wrap">
+      <div class="composer" id="composer">
+        <textarea id="input" rows="1" placeholder="给 MiniMind 发送消息…" autocomplete="off"></textarea>
+        <button class="send-btn" id="send" title="发送 (Enter)" aria-label="发送">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4.5 12h13M11.5 5.5L18 12l-6.5 6.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="stop-btn" id="stop" title="停止生成" aria-label="停止生成" hidden>
+          <svg viewBox="0 0 24 24" width="16" height="16"><rect x="7" y="7" width="10" height="10" rx="1.6" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <div class="composer-hint">
+        <span>Enter 发送 · Shift + Enter 换行</span>
+        <span id="composer-status"></span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================ 右侧控制台 ============================ -->
+  <aside class="chat-dock" id="chat-dock">
+    <div class="dock-scroll" id="dock-scroll">
+
+      <!-- --------------------------- 模型 --------------------------- -->
+      <section class="lcard dock-card" id="dock-model">
+        <div class="lcard-head">
+          <h3>模型与权重</h3>
+          <span class="spacer"></span>
+          <button class="text-btn" id="refresh-models" title="重新扫描 configs/ 与 out/ 下的权重">刷新</button>
+        </div>
+
+        <label class="field">
+          <span class="field-label">权重 / 配置</span>
+          <select id="model-select" class="control"></select>
+        </label>
+        <button class="btn primary block" id="load-model">
+          <span class="btn-label">加载模型</span>
+          <span class="spinner" hidden></span>
+        </button>
+
+        <details class="advanced" id="manual-box">
+          <summary>手动指定 config / 权重</summary>
+          <label class="field">
+            <span class="field-label">config 路径</span>
+            <input id="manual-config" class="control mono" placeholder="configs/sft_moe_full.yaml" spellcheck="false">
+          </label>
+          <label class="field">
+            <span class="field-label">权重路径（留空按配置推导）</span>
+            <input id="manual-weight" class="control mono" placeholder="out/full_sft_moe_full_768_moe.pth" spellcheck="false">
+          </label>
+          <button class="btn ghost block" id="load-manual">用这套路径加载</button>
+        </details>
+
+        <div class="model-info" id="model-info">
+          <div class="info-empty">尚未加载模型</div>
+        </div>
+      </section>
+
+      <!-- ------------------------- 训练来源 ------------------------- -->
+      <!-- 「当前这个权重是哪次训练产出的」。数据来自 /api/runs（训练侧写的登记表），
+           匹配不上就明说匹配不上 —— 不猜。 -->
+      <section class="lcard dock-card" id="dock-origin">
+        <div class="lcard-head">
+          <h3>训练来源</h3>
+          <span class="spacer"></span>
+          <a class="text-btn" id="origin-link" href="/lab#runs" hidden>完整登记 →</a>
+        </div>
+        <div class="model-info" id="origin-info">
+          <div class="info-empty">加载模型后显示它的训练登记</div>
+        </div>
+      </section>
+
+      <!-- -------------------------- 采样参数 -------------------------- -->
+      <section class="lcard dock-card" id="dock-params">
+        <div class="lcard-head">
+          <h3>采样参数</h3>
+          <span class="sub" id="params-changed"></span>
+          <span class="spacer"></span>
+          <button class="text-btn" id="reset-params">重置</button>
+        </div>
+
+        <div class="slider-row">
+          <label for="p-temperature">temperature</label>
+          <output id="v-temperature">0.85</output>
+        </div>
+        <input type="range" id="p-temperature" min="0.1" max="1.5" step="0.01" value="0.85">
+
+        <div class="slider-row">
+          <label for="p-topp">top_p</label>
+          <output id="v-topp">0.85</output>
+        </div>
+        <input type="range" id="p-topp" min="0.1" max="1" step="0.01" value="0.85">
+
+        <div class="slider-row">
+          <label for="p-topk">top_k</label>
+          <output id="v-topk">50</output>
+        </div>
+        <input type="range" id="p-topk" min="0" max="200" step="1" value="50">
+
+        <div class="slider-row">
+          <label for="p-rep">repetition_penalty</label>
+          <output id="v-rep">1.05</output>
+        </div>
+        <input type="range" id="p-rep" min="1" max="1.5" step="0.01" value="1.05">
+
+        <div class="slider-row">
+          <label for="p-max">max_new_tokens</label>
+          <output id="v-max">1024</output>
+        </div>
+        <input type="range" id="p-max" min="64" max="8192" step="64" value="1024">
+
+        <div class="slider-row">
+          <label for="p-history">历史轮数</label>
+          <output id="v-history">4</output>
+        </div>
+        <input type="range" id="p-history" min="0" max="12" step="1" value="4">
+
+        <label class="field">
+          <span class="field-label">随机种子（留空 = 随机）</span>
+          <input id="p-seed" class="control" type="number" placeholder="随机" min="0" step="1">
+        </label>
+      </section>
+
+      <!-- --------------------------- 能力 --------------------------- -->
+      <section class="lcard dock-card" id="dock-skill">
+        <div class="lcard-head"><h3>能力开关</h3></div>
+
+        <label class="switch-row">
+          <span>
+            <strong>思考链</strong>
+            <em>open_thinking：模型先输出 &lt;think&gt; 再回答</em>
+          </span>
+          <input type="checkbox" id="opt-thinking" class="switch">
+        </label>
+
+        <div class="tools-head">
+          <strong>工具调用</strong>
+          <em id="tools-hint">最多选 4 个</em>
+        </div>
+        <div class="tools-grid" id="tools-grid"></div>
+      </section>
+
+      <!-- ------------------------- 运行环境 ------------------------- -->
+      <section class="lcard dock-card" id="dock-runtime">
+        <div class="lcard-head">
+          <h3>运行环境</h3>
+          <span class="spacer"></span>
+          <span class="sub" id="runtime-at">—</span>
+        </div>
+        <div id="runtime-body"><div class="viz-empty">读取中…</div></div>
+      </section>
+
+      <!-- --------------------------- 会话 --------------------------- -->
+      <section class="lcard dock-card" id="dock-session">
+        <div class="lcard-head"><h3>本次会话</h3></div>
+        <div class="kv" id="session-kv"></div>
+      </section>
+
+    </div>
+  </aside>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+<script src="/static/viz.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

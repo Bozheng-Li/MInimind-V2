@@ -1,0 +1,24 @@
+# =============================================================================
+# 完整版 SFT：使用完整 sft_t2t.jsonl（510 万条，14G）
+# -----------------------------------------------------------------------------
+# 与 sft_moe.yaml 的唯一区别是**数据量**（mini 90 万 → 完整 510 万，5.6×）。
+# 架构、超参、种子一致，因此两个 SFT 模型可直接对比。
+#
+# 权重名刻意用 full_sft_moe_full（而非 full_sft_moe），**不覆盖** mini 版，
+# 便于做「数据量对 SFT 效果的影响」对比。
+#
+# 时间估算：159,670 步 ÷ 1.09 步/秒 ≈ **41 小时**（2×3090，mini 版实测速率）
+#
+# 用法：
+#   cd trainer && torchrun --nproc_per_node 2 train.py \
+#       --algo sft --config configs/sft_moe_full.yaml
+#
+# 产出：test/out/full_sft_moe_full_768_moe.pth
+# =============================================================================
+defaults: sft_moe.yaml
+
+data:
+  path: dataset/sft/sft_t2t.jsonl     # 完整版（510 万条）
+
+train:
+  save_weight: full_sft_moe_full

@@ -18,7 +18,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextStreamer
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
-from model.model_lora import apply_lora, load_lora
+from model.model_lora import apply_lora_from_checkpoint
 
 warnings.filterwarnings('ignore')
 
@@ -39,8 +39,9 @@ def init_model(args):
         ))
         model.load_state_dict(torch.load(ckp, map_location=device), strict=True)
         if args.lora_weight != 'None':
-            apply_lora(model)
-            load_lora(model, f'../{args.save_dir}/lora/{args.lora_weight}_{args.hidden_size}.pth')
+            apply_lora_from_checkpoint(
+                model, f'../{args.save_dir}/lora/{args.lora_weight}_{args.hidden_size}.pth'
+            )
     else:
         model = AutoModelForCausalLM.from_pretrained(args.load_from, trust_remote_code=True)
     print(f'MiniMind模型参数量: {sum(p.numel() for p in model.parameters()) / 1e6:.2f} M(illion)')
@@ -237,7 +238,7 @@ async def chat_completions(request: ChatRequest):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Server for MiniMind")
     parser.add_argument('--load_from', default='../model', type=str, help="模型加载路径（model=原生torch权重，其他路径=transformers格式）")
-    parser.add_argument('--save_dir', default='out', type=str, help="模型权重目录")
+    parser.add_argument('--save_dir', default='../test/out', type=str, help="模型权重目录（默认 ../test/out：产物在 test/ 下）")
     parser.add_argument('--weight', default='full_sft', type=str, help="权重名称前缀（pretrain, full_sft, dpo, reason, ppo_actor, grpo, spo）")
     parser.add_argument('--lora_weight', default='None', type=str, help="LoRA权重名称（None表示不使用，可选：lora_identity, lora_medical）")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")

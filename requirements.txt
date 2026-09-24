@@ -12,6 +12,7 @@ openai==1.59.6
 psutil==5.9.8
 protobuf==6.33.5
 pydantic==2.11.5
+pyyaml==6.0.2
 rich==13.7.1
 scikit_learn==1.5.1
 sentence_transformers==2.3.1
@@ -28,7 +29,27 @@ streamlit==1.50.0
 einops==0.8.1
 swanlab==0.9.8
 modelscope==1.37.0
+bitsandbytes==0.47.0  # QLoRA 的 NF4 量化与 paged 8-bit 优化器
 # torch==2.6.0
 # torchvision==0.21.0
 # peft==0.7.1
-# matplotlib==3.10.0
+
+# ---------------------------------------------------------------- 新增部分
+# 下面是 webui/、scripts/、test/storage/ 引入的依赖。
+# 主线训练（trainer/train_*.py）用不到，但跑这些模块时必须装上。
+# ----------------------------------------------------------------
+
+# webui/server.py 与 scripts/serve_openai_api.py：WebUI / OpenAI 兼容服务端（FastAPI + SSE）
+fastapi==0.115.6
+uvicorn==0.32.1
+
+# test/storage/：报告绘图（report_*.py / plot_training_log.py）与读 parquet 评测
+matplotlib==3.10.0
+pandas==2.2.3
+
+# test/storage/：下载外部数据集（download_extra_datasets.py）
+huggingface_hub==0.27.0
+
+# test/storage/：lm-evaluation-harness 适配层（minimind_lm.py）。
+# 只有想切到 lm_eval CLI 时才需要；eval_benchmarks.py 走本地 parquet，不依赖它。
+# lm_eval==0.4.5

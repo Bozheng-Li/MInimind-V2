@@ -1,0 +1,156 @@
+/* ==========================================================================
+   MiniMind 对话页 —— 三栏推理控制台
+   依赖 style.css（站点令牌 / 消息与 markdown 样式）、viz.css（图表令牌）、
+   lab.css（外壳、卡片、徽标、键值表、Toast）—— 顺序不可颠倒，本文件最后加载。
+   ========================================================================== */
+
+.chat-app {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr) 344px;
+  height: 100vh;
+  height: 100dvh;
+  transition: grid-template-columns .22s var(--ease);
+}
+.chat-app.no-dock { grid-template-columns: 248px minmax(0, 1fr) 0px; }
+
+/* ============================ 左侧导航 ============================ */
+.chat-side .lab-nav button[aria-current="true"] { box-shadow: var(--shadow-sm); }
+
+/* ============================== 主区 ============================== */
+.chat-main { background: var(--surface); }
+
+.chat-main .lab-top h1 {
+  max-width: 34ch;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chat-main .chip { display: inline-flex; align-items: center; }
+.chat-main .chip .live-dot { margin-right: 4px; }
+.chat-main .chip .live-dot.idle { background: var(--ink-3); animation: none; }
+@media (max-width: 560px) { .chat-main .chip { display: none; } }
+#dock-toggle[aria-pressed="false"] { color: var(--ink-3); background: var(--panel-2); }
+
+#chat { flex: 1; min-height: 0; }
+
+.composer-wrap {
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  padding: 12px 24px 14px;
+}
+.composer-wrap .composer, .composer-wrap .composer-hint { max-width: 860px; }
+.composer {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.composer:focus-within { box-shadow: var(--shadow-md), 0 0 0 4px var(--accent-soft); }
+.send-btn, .stop-btn { border-radius: 10px; }
+.composer-hint { padding: 0 2px; }
+
+/* 消息：主区变窄后收紧留白，读起来更连贯 */
+#chat { padding: 22px 24px 10px; }
+.chat-inner { gap: 20px; }
+.msg-body-assistant { border-radius: 6px var(--radius) var(--radius) var(--radius); }
+
+/* ============================ 右侧控制台 ============================ */
+.chat-dock {
+  display: flex; flex-direction: column;
+  min-height: 0; min-width: 0;
+  background: var(--surface-2);
+  border-left: 1px solid var(--line);
+  overflow: hidden;
+}
+.chat-app.no-dock .chat-dock { display: none; }
+.dock-scroll {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px 14px 32px;
+  scroll-behavior: smooth;
+}
+.dock-card { padding: 14px 15px; border-radius: var(--radius-sm); }
+.dock-card > h3, .dock-card .lcard-head h3 { font-size: 12.5px; }
+.dock-card.flash { border-color: var(--accent-ring); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.dock-card .field { margin-bottom: 9px; }
+.dock-card .field-label { display: block; }
+.dock-card .btn.block { margin-top: 2px; }
+.dock-card .slider-row { margin-top: 9px; margin-bottom: 1px; }
+.dock-card .slider-row:first-of-type { margin-top: 0; }
+.dock-card .switch-row { margin: 0 0 12px; }
+.dock-card .advanced { margin-top: 12px; }
+.dock-card .advanced .field:first-of-type { margin-top: 8px; }
+.dock-card .model-info { margin-top: 12px; }
+.dock-card .info-grid dd { font-size: 11px; }
+/* 「模型与权重 / 训练来源」两张卡里的分组明细复用 lab.css 的 .kv 组件，
+   但控制台栏宽只有 ~370px，故把键列压窄、值允许右对齐换行。 */
+.dock-card .kv-group { margin-top: 12px; }
+.dock-card .kv-k { min-width: 88px; font-size: 10.5px; }
+.dock-card .kv-v { font-size: 11px; }
+.dock-card .slot-chips { margin-top: 2px; }
+.dock-card .slot-chip { font-size: 10.5px; padding: 3px 8px; }
+
+/* ---------------------------- 运行环境 ---------------------------- */
+#runtime-body { display: flex; flex-direction: column; gap: 10px; }
+.gpu-card { padding: 10px 11px; gap: 7px; }
+.gpu-card .meter-wrap { gap: 6px; }
+.gpu-card .meter-row-top { font-size: 10.5px; }
+.meter-track { height: 6px; }
+.rt-foot {
+  display: flex; flex-wrap: wrap; gap: 4px 10px;
+  font-size: 10.5px; color: var(--ink-3);
+  border-top: 1px dashed var(--line);
+  padding-top: 9px;
+}
+.rt-foot b { font-family: var(--mono); color: var(--ink-2); font-weight: 600; }
+
+/* ---------------------------- 会话统计 ---------------------------- */
+.dock-card .kv-row { font-size: 11.5px; padding: 5.5px 0; }
+.dock-card .kv-k { min-width: 74px; }
+.dock-card .kv-v { font-size: 11.5px; }
+.kv-stack { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+.dock-card .kv-v .badge { font-size: 10px; }
+
+/* ============================== 响应式 ============================== */
+/* 中屏：右侧控制台收成抽屉，主区独占 */
+@media (max-width: 1420px) {
+  .chat-app { grid-template-columns: 248px minmax(0, 1fr); }
+  /* 从顶栏下沿展开：顶栏的收起按钮不能被抽屉压住 */
+  .chat-dock {
+    position: fixed; top: var(--top-h, 0px); right: 0; bottom: 0;
+    width: min(92vw, 360px);
+    margin: 0; z-index: 60;
+    border-top: 1px solid var(--line);
+    transform: translateX(102%);
+    transition: transform .26s var(--ease);
+    box-shadow: var(--shadow-lg);
+    border-left: 1px solid var(--line);
+  }
+  /* 抽屉收起（或整栏关闭）时不留一条露出边缘的静态栏 */
+  .chat-app:not(.dock-open) .chat-dock { pointer-events: none; visibility: hidden; }
+  .chat-app.dock-open .chat-dock { pointer-events: auto; visibility: visible; }
+  .chat-app.dock-open .chat-dock { transform: none; }
+  /* 顶栏抬到遮罩之上（40）、抽屉之下（60）：抽屉展开时收起按钮仍可点 */
+  .chat-main .lab-top { z-index: 45; }
+  .chat-app.no-dock .chat-dock { display: flex; }
+  #dock-toggle[aria-pressed="true"] { color: var(--accent); border-color: var(--accent-ring); }
+}
+
+/* 窄屏：左侧导航也是抽屉（与实验台同一套抽屉机制） */
+@media (max-width: 1024px) {
+  .chat-app, .chat-app.no-dock { grid-template-columns: minmax(0, 1fr); }
+  .chat-side {
+    /* lab.css 的 1024 断点把 .lab-side 直接 display:none，这里必须显式恢复 */
+    display: flex;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: min(88vw, 248px);
+    z-index: 50;
+    transform: translateX(-102%);
+    transition: transform .26s var(--ease);
+    box-shadow: var(--shadow-lg);
+  }
+  .chat-side.open { transform: none; }
+  .only-mobile { display: inline-flex; }
+  #chat { padding: 16px 14px 8px; }
+  .composer-wrap { padding: 8px 14px 12px; }
+}
+.only-wide { display: inline-flex; }
+@media (max-width: 640px) { .only-wide { display: none; } }

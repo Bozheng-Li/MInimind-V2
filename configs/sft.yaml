@@ -1,0 +1,92 @@
+# =============================================================================
+# 监督微调（SFT）配置
+# -----------------------------------------------------------------------------
+# 本文件同时服务四种监督微调算法，用 algo 段区分各自的专属超参：
+#   - train_full_sft.py  -> 用 train 段（全参微调）
+#   - train_lora.py / 统一入口 lora、qlora -> algo.lora / algo.qlora
+#   - train_distillation.py -> algo.distill
+#
+# 数值与重构前各脚本的 argparse 默认值逐项一致，命令行仍可覆盖。
+# =============================================================================
+defaults: base.yaml
+
+# ------------------------------ 数据 ------------------------------
+data:
+  path: dataset/sft/sft_t2t_mini.jsonl
+  max_seq_len: 768
+
+# ---------------------------- 训练超参 ----------------------------
+train:
+  save_dir: out
+  save_weight: full_sft
+  epochs: 2
+  batch_size: 16
+  learning_rate: 1.0e-5
+  accumulation_steps: 1
+  grad_clip: 1.0
+  log_interval: 100
+  save_interval: 1000
+  num_workers: 8
+  dtype: bfloat16
+  seed: 42
+  from_weight: pretrain     # 基于预训练权重继续
+
+# ------------------------ 各算法专属超参 ------------------------
+algo:
+  # LoRA：只训低秩分支，轮数多、学习率大、序列短
+  lora:
+    lora_name: lora_medical
+    # 仓库自带的医疗指令集位于 external/sft；使用现有路径，保证不额外传
+    # --data_path 时默认命令也能直接启动。
+    data_path: dataset/external/sft/lora_medical.jsonl
+    max_seq_len: 340
+    epochs: 10
+    batch_size: 32
+    learning_rate: 1.0e-4
+    log_interval: 10
+    save_interval: 1000
+    from_weight: full_sft
+    lora_rank: 16
+    lora_alpha: 32
+    lora_dropout: 0.05
+
+  # QLoRA：训练口径与 LoRA 相同，但冻结基座以 NF4 保存，适合显存较小的 GPU。
+  qlora:
+    save_weight: qlora_medical
+    lora_name: qlora_medical
+    data_path: dataset/external/sft/lora_medical.jsonl
+    max_seq_len: 340
+    epochs: 10
+    batch_size: 16
+    learning_rate: 2.0e-4
+    log_interval: 10
+    save_interval: 1000
+    from_weight: full_sft
+    lora_rank: 16
+    lora_alpha: 32
+    lora_dropout: 0.05
+    qlora_quant_type: nf4
+    qlora_double_quant: 1
+    qlora_compute_dtype: bfloat16
+    qlora_optimizer: paged_adamw_8bit
+
+  # 白盒知识蒸馏：学生 Dense、教师 MoE（默认）
+  distill:
+    save_weight: full_dist
+    data_path: dataset/sft/sft_t2t_mini.jsonl
+    max_seq_len: 340
+    epochs: 6
+    batch_size: 32
+    learning_rate: 5.0e-6
+    log_interval: 100
+    save_interval: 100
+    from_student_weight: full_sft
+    from_teacher_weight: full_sft
+    student_hidden_size: 768
+    student_num_layers: 8
+    student_use_moe: 0
+    teacher_hidden_size: 768
+    teacher_num_layers: 8
+    teacher_use_moe: 1
+    alpha: 0.5
+    temperature: 1.5

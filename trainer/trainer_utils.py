@@ -7,6 +7,7 @@ __package__ = "trainer"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import random
 import math
+from pathlib import Path
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -45,9 +46,11 @@ def init_distributed_mode():
     if int(os.environ.get("RANK", -1)) == -1:
         return 0  # 非DDP模式
 
-    dist.init_process_group(backend="nccl")
     local_rank = int(os.environ["LOCAL_RANK"])
+    # 必须先绑定本进程的 CUDA 设备，再初始化 NCCL。反过来时 NCCL 可能在所有
+    # rank 上先触碰默认 cuda:0，随后切卡会出现无 Python traceback 的 SIGSEGV。
     torch.cuda.set_device(local_rank)
+    dist.init_process_group(backend="nccl")
     return local_rank
 
 
@@ -60,7 +63,7 @@ def setup_seed(seed: int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoch=0, step=0, wandb=None, save_dir='../checkpoints', **kwargs):
+def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoch=0, step=0, wandb=None, save_dir='../test/checkpoints', **kwargs):
     os.makedirs(save_dir, exist_ok=True)
     moe_path = '_moe' if lm_config.use_moe else ''
     ckp_path = f'{save_dir}/{weight}_{lm_config.hidden_size}{moe_path}.pth'
@@ -70,7 +73,12 @@ def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoc
         raw_model = model.module if isinstance(model, DistributedDataParallel) else model
         raw_model = getattr(raw_model, '_orig_mod', raw_model)
         state_dict = raw_model.state_dict()
-        state_dict = {k: v.half().cpu() for k, v in state_dict.items()}
+        # 浮点权重统一存 fp16；QLoRA 的 packed uint8 权重与量化元数据必须保持原
+        # dtype，盲目 ``half()`` 会把 NF4 bit pattern 破坏成不可恢复的数值。
+        state_dict = {
+            k: (v.half().cpu() if torch.is_floating_point(v) else v.cpu())
+            for k, v in state_dict.items()
+        }
         ckp_tmp = ckp_path + '.tmp'
         torch.save(state_dict, ckp_tmp)
         os.replace(ckp_tmp, ckp_path)
@@ -116,7 +124,21 @@ def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoc
         return None
 
 
-def init_model(lm_config, from_weight='pretrain', tokenizer_path='../model', save_dir='../out', device='cuda'):
+def init_model(lm_config, from_weight='pretrain', tokenizer_path=None, save_dir=None, device='cuda'):
+    # 默认路径按**文件位置**解析，而不是按当前工作目录：原来写死 '../model' / '../out'
+    # 只在「cd trainer 后启动」时才对；仓库根启动（sweep 就是这么跑的）会去找
+    # /home/<user>/model，报一个和真实原因毫不相干的 HFValidationError。
+    _root = Path(__file__).resolve().parents[1]
+    if tokenizer_path is None:
+        tokenizer_path = str(_root / "model")
+    if save_dir is None:
+        # 产物默认落在 test/ 下（与 configs/loader.py 的 ARTIFACT_ROOT 同一口径），
+        # 这样仓库根永远是纯净代码。设 MINIMIND_ARTIFACT_ROOT=<repo> 可回到旧行为。
+        env = os.environ.get("MINIMIND_ARTIFACT_ROOT")
+        artifact = Path(env) if env else (_root / "test")
+        if not artifact.is_absolute():
+            artifact = _root / artifact
+        save_dir = str(artifact / "out")
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     model = MiniMindForCausalLM(lm_config)
 

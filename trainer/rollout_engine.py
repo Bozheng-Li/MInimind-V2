@@ -47,6 +47,26 @@ class RolloutResult:
     completion_mask: Tensor
 
 
+def build_full_attention_mask(output_ids: Tensor, prompt_lens: Tensor,
+                              completion_mask: Tensor, pad_token_id: int) -> Tensor:
+    """由真实 prompt/完成长度重建整段 attention mask。
+
+    Torch 生成器会在首个 EOS 后继续填 EOS，SGLang 则用 PAD；仅比较 token id
+    无法统一处理二者。这里先保留 prompt 中的非 PAD，再把完成区清零并按
+    ``completion_mask`` 精确写回。
+    """
+    full_mask = output_ids.ne(pad_token_id).long()
+    positions = torch.arange(output_ids.size(1), device=output_ids.device).unsqueeze(0)
+    full_mask = full_mask.masked_fill(positions >= prompt_lens.unsqueeze(1), 0)
+    offsets = torch.arange(completion_mask.size(1), device=output_ids.device).unsqueeze(0)
+    completion_positions = prompt_lens.unsqueeze(1) + offsets
+    inside = completion_positions < output_ids.size(1)
+    safe_positions = completion_positions.clamp(max=output_ids.size(1) - 1)
+    values = completion_mask.to(full_mask.dtype) * inside.to(full_mask.dtype)
+    full_mask.scatter_(1, safe_positions, values)
+    return full_mask
+
+
 # ===== Rollout 引擎抽象基类 =====
 class RolloutEngine(ABC):
     tokenizer = None
@@ -70,26 +90,45 @@ class TorchRolloutEngine(RolloutEngine):
     
     def rollout(self, prompt_ids: Tensor, attention_mask: Tensor, num_generations: int, max_new_tokens: int, temperature: float = 0.8) -> RolloutResult:
         model = self.policy_model.module if isinstance(self.policy_model, DistributedDataParallel) else self.policy_model
+        was_training = model.training
+        # rollout 属于数据采样而非训练前向：必须关闭 dropout，也不能让
+        # aux-loss-free MoE 在无梯度生成期间更新路由偏置。
+        model.eval()
         ctx = self.autocast_ctx if self.autocast_ctx else nullcontext()
-        with torch.no_grad(), ctx:
-            output_ids = model.generate(
-                input_ids=prompt_ids.repeat_interleave(num_generations, dim=0),
-                attention_mask=attention_mask.repeat_interleave(num_generations, dim=0),
-                max_new_tokens=max_new_tokens,
-                do_sample=True,
-                temperature=temperature,
-                num_return_sequences=1,
-                pad_token_id=self.tokenizer.pad_token_id,
-                eos_token_id=self.tokenizer.eos_token_id,
-            ).clone()  # [B*num_gen, P+R]
-            prompt_len = prompt_ids.size(1)
-            completion_ids = output_ids[:, prompt_len:]  # [B*num_gen, R]
-            full_mask = (output_ids != self.tokenizer.pad_token_id).long()
-            per_token_logps = compute_per_token_logps(self.policy_model, output_ids, completion_ids.size(1), attention_mask=full_mask)
+        try:
+            with torch.no_grad(), ctx:
+                output_ids = model.generate(
+                    input_ids=prompt_ids.repeat_interleave(num_generations, dim=0),
+                    attention_mask=attention_mask.repeat_interleave(num_generations, dim=0),
+                    max_new_tokens=max_new_tokens,
+                    do_sample=True,
+                    temperature=temperature,
+                    num_return_sequences=1,
+                    pad_token_id=self.tokenizer.pad_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                ).clone()  # [B*num_gen, P+R]
+                prompt_len = prompt_ids.size(1)
+                completion_ids = output_ids[:, prompt_len:]  # [B*num_gen, R]
+                # 自研 generate 会让已结束序列在后续位置继续填 EOS，而不是 PAD。若把完成区
+                # 全标为 1，长度、GAE 和策略损失都会把这些“重复 EOS”误当真实 token。
+                if self.tokenizer.eos_token_id is None:
+                    completion_mask = attention_mask.new_ones(completion_ids.shape)
+                else:
+                    eos = completion_ids.eq(self.tokenizer.eos_token_id)
+                    seen_eos_before = eos.cumsum(dim=1) - eos.to(torch.long)
+                    completion_mask = seen_eos_before.eq(0).to(attention_mask.dtype)
+                prompt_mask = attention_mask.repeat_interleave(num_generations, dim=0)
+                full_mask = torch.cat((prompt_mask, completion_mask), dim=1)
+                per_token_logps = compute_per_token_logps(
+                    self.policy_model, output_ids, completion_ids.size(1), attention_mask=full_mask
+                )
+        finally:
+            if was_training:
+                model.train()
         completions = self.tokenizer.batch_decode(completion_ids, skip_special_tokens=True)
         return RolloutResult(output_ids, completion_ids, per_token_logps, completions,
                              prompt_ids.new_full((output_ids.size(0),), prompt_len),
-                             attention_mask.new_ones(output_ids.size(0), completion_ids.size(1)))
+                             completion_mask)
     
     def update_policy(self, model: torch.nn.Module):
         self.policy_model = model

@@ -1,0 +1,32 @@
+# =============================================================================
+# SFT：在 MoE 预训练权重上做监督微调（得到能对话的模型）
+# -----------------------------------------------------------------------------
+# 关键点：`defaults: pretrain_moe.yaml` 保证**模型结构与预训练完全一致**
+# （gated + moe_finegrained）。架构不一致会导致权重形状对不上而加载失败。
+#
+# 为什么不能用原有的 train_full_sft.py：它只能通过 --use_moe 构造**普通 top-k MoE**，
+# 加载 moe_finegrained 的权重会得到错误的模型。必须走统一入口：
+#
+#   cd trainer && torchrun --nproc_per_node 2 train.py \
+#       --algo sft --config configs/sft_moe.yaml
+#
+# 产出：test/out/full_sft_moe_768_moe.pth
+# =============================================================================
+defaults: pretrain_moe.yaml
+
+# ------------------------------ 数据 ------------------------------
+data:
+  path: dataset/sft/sft_t2t_mini.jsonl
+  max_seq_len: 768                     # SFT 的多轮对话比预训练长
+
+# ---------------------------- 训练超参 ----------------------------
+train:
+  save_weight: full_sft_moe
+  epochs: 1
+  batch_size: 16
+  accumulation_steps: 2                # 等效 batch = 16 × 2 × 2 卡 = 64（与原版 SFT 一致）
+  learning_rate: 1.0e-5                # SFT 用小学习率，避免遗忘预训练知识
+  grad_clip: 1.0
+  log_interval: 50
+  save_interval: 1000
+  from_weight: pretrain_moe            # 基于刚训好的 MoE 预训练权重

@@ -9,7 +9,7 @@ import transformers
 import warnings
 from transformers import AutoTokenizer, AutoModelForCausalLM, Qwen3Config, Qwen3ForCausalLM, Qwen3MoeConfig, Qwen3MoeForCausalLM
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
-from model.model_lora import apply_lora, merge_lora
+from model.model_lora import merge_lora
 
 warnings.filterwarnings('ignore', category=UserWarning)
 
@@ -107,7 +107,6 @@ def convert_merge_base_lora(base_torch_path, lora_path, merged_torch_path):
     lm_model = MiniMindForCausalLM(lm_config).to(device)
     state_dict = torch.load(base_torch_path, map_location=device)
     lm_model.load_state_dict(state_dict, strict=False)
-    apply_lora(lm_model)
     merge_lora(lm_model, lora_path, merged_torch_path)
     print(f"LoRA 已合并并保存为基模结构 PyTorch 格式: {merged_torch_path}")
 
@@ -129,14 +128,14 @@ if __name__ == '__main__':
     lm_config = MiniMindConfig(hidden_size=768, num_hidden_layers=8, max_seq_len=8192, use_moe=False)
 
     # convert torch to transformers
-    torch_path = f"../out/full_sft_{lm_config.hidden_size}{'_moe' if lm_config.use_moe else ''}.pth"
+    torch_path = f"../test/out/full_sft_{lm_config.hidden_size}{'_moe' if lm_config.use_moe else ''}.pth"
     transformers_path = '../minimind-3'
     convert_torch2transformers(torch_path, transformers_path)
 
     # # merge lora
-    # base_torch_path = f"../out/full_sft_{lm_config.hidden_size}{'_moe' if lm_config.use_moe else ''}.pth"
-    # lora_path = f"../out/lora_identity_{lm_config.hidden_size}{'_moe' if lm_config.use_moe else ''}.pth"
-    # merged_torch_path = f"../out/merge_identity_{lm_config.hidden_size}{'_moe' if lm_config.use_moe else ''}.pth"
+    # base_torch_path = f"../test/out/full_sft_{lm_config.hidden_size}{'_moe' if lm_config.use_moe else ''}.pth"
+    # lora_path = f"../test/out/lora_identity_{lm_config.hidden_size}{'_moe' if lm_config.use_moe else ''}.pth"
+    # merged_torch_path = f"../test/out/merge_identity_{lm_config.hidden_size}{'_moe' if lm_config.use_moe else ''}.pth"
     # convert_merge_base_lora(base_torch_path, lora_path, merged_torch_path)
 
     # convert_transformers2torch(transformers_path, torch_path)

@@ -1,0 +1,275 @@
+/* ==========================================================================
+   可视化设计令牌 + 图元样式
+   --------------------------------------------------------------------------
+   与 `style.css` 的站点令牌同源，只补「图表专用」的四类色：
+
+   1. 分类色 --s1..--s8   身份。**固定顺序取用，绝不循环**（第 9 条要么折叠成
+      「其它」，要么分面）。浅色面下 #1baf7a/#eda100/#e87ba4 与底色对比 <3:1，
+      因此凡用到它们的图都必须有可见直接标注或表格视图（本文件已在图例/端点上
+      做直接标注，满足「relief」要求）。
+   2. 顺序色 --seq-1..8   一个色相由浅到深 = 量值大小。只用于热力图这类连续量。
+   3. 发散色 --div-n/p    两个对立色相 + 中性灰中点。只用于「相对基线的正负」。
+      约定：**冷（蓝）= 低，暖（红）= 高**。这样「loss 比基线高」自然读成红色。
+   4. 状态色 --good/--warning/--serious/--critical  保留语义，绝不当作「第 4 条曲线」，
+      且永远配图标或文字，不靠颜色单独表意。
+
+   四条硬约束（dataviz 规范）：绝不双 Y 轴；分类色不循环；顺序色不彩虹；发散色中点
+   必须是中性灰而不是某个色相。
+   ========================================================================== */
+
+:root {
+  /* ---- 1. 分类色（浅色面 #fcfcfb 验证通过，CVD 最差相邻 ΔE 7.2 ≥ 6 且有直接标注）---- */
+  --s1: #2a78d6;   /* 蓝   */
+  --s2: #eb6834;   /* 橙   */
+  --s3: #1baf7a;   /* 青绿 */
+  --s4: #eda100;   /* 琥珀 */
+  --s5: #e87ba4;   /* 粉   */
+  --s6: #4a3aa7;   /* 靛   */
+  --s7: #e34948;   /* 红   */
+  --s8: #008300;   /* 绿   */
+
+  /* ---- 2. 顺序色：蓝 100 → 700，等间距取 8 级，浅→深单调 ---- */
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #86b6ef;
+  --seq-4: #6da7ec;
+  --seq-5: #3987e5;
+  --seq-6: #2a78d6;
+  --seq-7: #1c5cab;
+  --seq-8: #0d366b;
+
+  /* ---- 3. 发散色：中性灰中点 + 红(负/低)↔蓝(正/高) 各 4 级 ---- */
+  --div-0:   #f0efec;
+  --div-n1:  #f6d2cf;
+  --div-n2:  #eda9a4;
+  --div-n3:  #dd7b74;
+  --div-n4:  #c0392b;
+  --div-p1:  #cde2fb;
+  --div-p2:  #9ec5f4;
+  --div-p3:  #5598e7;
+  --div-p4:  #1c5cab;
+
+  /* ---- 4. 状态色（固定，不随主题改；配图标/文字使用）----
+     实测对比度（WCAG，对 meter-track 的浅灰底 --panel-2 #f7f7f4）：
+       good 3.13 · warning 1.71 · serious 2.46 · critical 4.48
+     深色面（--panel-2 #1d1d20）：
+       good 5.01 · warning 9.17 · serious 6.37 · critical 3.50
+
+     浅色面下 warning / serious 低于图形对象 3:1，是**已知且有意的**取步：深色面
+     需要的就是这两个高亮度步（同一组四步在深色面全部 ≥3.5，深色主题因此无需另取
+     一档）。缓解手段是语义从不只靠颜色 —— 每处状态色都同时带**可见标签 + 数值**
+     （.meter-row-top 的 label 与 .v），满足「contrast WARN obligates visible
+     labels or a table view」的 relief 要求。若将来新增一处只上色、不带标签的状态
+     标记，必须先在这里补 relief，否则不许用 warning / serious。
+     状态色不参与分类色序，也绝不当作「第 4 条曲线」。 */
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --serious:  #ec835a;
+  --critical: #d03b3b;
+
+  /* ---- 图表专用中性色 ---- */
+  --cell-empty: #f0efec;      /* 热力图空值格 */
+  --grid:       rgba(11, 11, 11, 0.06);
+  --axis:       var(--line-strong);
+}
+
+[data-theme="dark"] {
+  /* ---- 分类色：同一批色相，按深色面 #17171a 重新取步，对比全部 ≥3:1 ---- */
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --s5: #d55181;
+  --s6: #9085e9;
+  --s7: #e66767;
+  --s8: #009c4a;
+
+  /* ---- 顺序色：深色面上「近零」贴近底色，因此方向反过来（深→浅）---- */
+  --seq-1: #123a63;
+  --seq-2: #184f95;
+  --seq-3: #1c5cab;
+  --seq-4: #256abf;
+  --seq-5: #2a78d6;
+  --seq-6: #3987e5;
+  --seq-7: #6da7ec;
+  --seq-8: #b7d3f6;
+
+  /* ---- 发散色 ---- */
+  --div-0:   #383835;
+  --div-n1:  #5c2b26;
+  --div-n2:  #8c3a32;
+  --div-n3:  #b84a3e;
+  --div-n4:  #e0705f;
+  --div-p1:  #123a63;
+  --div-p2:  #184f95;
+  --div-p3:  #2a78d6;
+  --div-p4:  #6da7ec;
+
+  --cell-empty: #2a2a2d;
+  --grid:       rgba(242, 242, 239, 0.07);
+
+  /* 状态色在此**故意不重新取步**：上面 :root 的四步本就是在深色面上挑的（全部
+     ≥3.5），深色面不需要第二套。见 :root 状态色段的实测说明。 */
+}
+
+/* ======================================================================== */
+/*  图元基础                                                                 */
+/* ======================================================================== */
+.viz-svg { display: block; overflow: visible; }
+
+.viz-grid      { stroke: var(--grid); stroke-width: 1; }
+.viz-axis      { stroke: var(--axis); stroke-width: 1; }
+.viz-zero      { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; opacity: .75; }
+.viz-mark      { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 4 4; }
+.viz-marklabel { fill: var(--ink-3); font-size: 10px; }
+.viz-band      { fill: var(--accent-soft); }
+.viz-bandlabel { fill: var(--ink-3); font-size: 9.5px; }
+
+/* 文字一律用文本色，绝不用曲线色 —— 颜色由旁边的色块承担身份 */
+.viz-tick {
+  fill: var(--ink-3);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--mono);
+}
+.viz-tick-strong { fill: var(--ink-2); font-size: 11px; font-family: var(--font); }
+.viz-val {
+  fill: var(--ink-2);
+  font-size: 10.5px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.viz-title      { fill: var(--ink-2); font-size: 11.5px; font-weight: 600; }
+.viz-axlabel    { fill: var(--ink-3); font-size: 10px; }
+.viz-endlabel   { fill: var(--ink-2); font-size: 10px; font-weight: 600; }
+.viz-celltext   { fill: #fff; font-size: 9px; font-family: var(--mono); }
+[data-theme="dark"] .viz-celltext { fill: #0b0b0b; }
+
+.viz-line   { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.viz-bar    { transition: opacity .12s ease; }
+.viz-cell   { transition: opacity .12s ease; }
+.viz-cell:hover, .viz-bar:hover { opacity: .78; }
+.viz-slice  { stroke: var(--panel); stroke-width: 2; }   /* 2px 底色缝隙 = 分段间隔 */
+/* 堆叠面积的分段：同样的 2px 底色缝隙，让相邻分量的边界不用靠颜色分辨 */
+.viz-area-seg { stroke: var(--panel); stroke-width: 2; fill-opacity: .88; }
+.viz-area-seg:hover { fill-opacity: 1; }
+.viz-front  { fill: none; stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.viz-pt     { stroke: var(--panel); stroke-width: 1.5; }  /* 2px 底色描边，重叠也分得开 */
+.viz-pt:hover { stroke-width: 2.5; }
+.viz-hit    { fill: transparent; cursor: crosshair; }
+.viz-cross  { stroke: var(--ink-3); stroke-width: 1; opacity: 0; pointer-events: none; }
+.viz-cross.on { opacity: .6; }
+.viz-dot    { pointer-events: none; opacity: 0; stroke: var(--panel); stroke-width: 2; }
+
+.viz-empty  { color: var(--ink-3); font-size: 12px; padding: 22px 8px; text-align: center; }
+.viz-empty-inline { display: inline-block; padding: 0; }
+
+/* ---- 管线图 ---- */
+.viz-node { fill: var(--panel); stroke-width: 1.6; }
+.viz-nodelabel { fill: var(--ink); font-size: 11.5px; font-weight: 600; }
+.viz-nodesub   { fill: var(--ink-3); font-size: 9.5px; font-family: var(--mono); }
+.viz-nodebadge { fill: var(--ink-2); font-size: 10px; font-weight: 600; }
+.viz-group     { fill: var(--ink-3); font-size: 10px; font-weight: 600; letter-spacing: .06em; }
+.viz-arrow     { stroke: var(--ink-3); stroke-width: 1.3; fill: none; stroke-linecap: round; }
+.viz-pipe      { overflow: visible; }
+
+/* ---- 仪表条 ---- */
+.viz-meter {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--panel-2);
+  gap: 2px;                          /* 2px 缝隙，相邻分段不糊在一起 */
+}
+.viz-meter-seg { transition: opacity .12s ease; cursor: default; }
+.viz-meter-seg:hover { opacity: .8; }
+.viz-meter-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+.viz-meter-item { display: inline-flex; align-items: center; gap: 6px; }
+.viz-meter-item b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+
+/* ---- 图例（≥2 条曲线必备，身份不只靠颜色）---- */
+.viz-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .14s ease, color .14s ease, opacity .14s ease;
+}
+.viz-leg:hover { border-color: var(--line-strong); color: var(--ink); }
+.viz-leg.off { opacity: .42; }
+.viz-leg.off .viz-sw { filter: grayscale(1); }
+.viz-sw {
+  width: 9px; height: 9px;
+  border-radius: 3px;
+  flex: none;
+  display: inline-block;
+}
+.viz-sw-none { background: var(--ink-3); opacity: .5; }
+
+/* ---- 浮层 ---- */
+.viz-tip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: 300px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-lg);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity .1s ease, transform .1s ease;
+}
+.viz-tip[data-show="true"] { opacity: 1; transform: none; }
+.viz-head {
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.viz-row { display: flex; align-items: center; gap: 7px; line-height: 1.7; }
+.viz-k { color: var(--ink-2); }
+.viz-v {
+  margin-left: auto;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---- 环图中心 ---- */
+.viz-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  gap: 1px;
+}
+.viz-donut-center strong { font-size: 19px; font-family: var(--mono); color: var(--ink); }
+.viz-donut-center span { font-size: 10.5px; color: var(--ink-3); }
+.viz-donut-wrap { position: relative; display: inline-block; }
+
+/* 迷你趋势线：内联在表格单元里，不能撑高行 */
+.viz-spark { display: block; }

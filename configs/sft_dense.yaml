@@ -1,0 +1,32 @@
+# =============================================================================
+# SFT：在 Dense 预训练权重上做监督微调 —— 架构对比的基线臂
+# -----------------------------------------------------------------------------
+# 目的：让「Dense（gqa + swiglu）」和「MoE（gated + moe_finegrained）」两条腿在
+# **完全相同的 SFT 口径**下各走一遍。此前只有 MoE 臂跑过 SFT，所以 SFT 阶段没有
+# 可比的两条腿（见 test/storage/report/report.md 的架构对比实验）。
+#
+# 口径逐项对齐 configs/sft_moe.yaml，唯一差异是模型结构：
+#   数据    dataset/sft/sft_t2t_mini.jsonl，max_seq_len 768（两者同名同文件）
+#   batch   16 × accum 2 × 2 卡 = 等效 64（与 sft_moe.yaml 一致）
+#   lr      1e-5，grad_clip 1.0，dtype bfloat16
+#   epochs  1  → 等价步数 28,288，与 MoE 臂同预算
+#   seed    42
+#   验证集  数据尾部 512 条（trainer 默认 --val_samples 512 / --val_interval 500），
+#           因此两条腿的 val_loss 是**同一个验证集**上的，可以直接比
+#
+# 用法：
+#   cd trainer && CUDA_VISIBLE_DEVICES=1,2 torchrun --nproc_per_node 2 train.py \
+#       --algo sft --config configs/sft_dense.yaml --run_name sft-dense-mini
+#
+# 产出：test/out/full_sft_768.pth
+#   命名沿用「阶段_hidden[_moe]」规则 —— 不带 _moe 后缀即 Dense 臂。
+#   注意：configs/sft.yaml（epochs 2 的原版口径）也写 full_sft，重跑它会把这份权重覆盖掉。
+# =============================================================================
+defaults: sft.yaml
+
+train:
+  save_weight: full_sft
+  from_weight: pretrain              # 基于 test/out/pretrain_768.pth（Dense 预训练权重）
+  epochs: 1                          # ↓ 以下三项是相对 sft.yaml 的改动，只为对齐 MoE 臂
+  accumulation_steps: 2
+  log_interval: 50

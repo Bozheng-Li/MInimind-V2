@@ -2,5 +2,28 @@ __pycache__/
 *.pyc
 .DS_Store
 out
+checkpoints/
 website/
 docs-minimind/
+
+# 数据集：几十 GB 的 jsonl 不进版本库，仓库只带 dataset/dataset.md 与 lm_dataset.py。
+# 下载方式见 dataset/dataset.md。
+dataset/pretrain/
+dataset/sft/
+dataset/rl/
+dataset/external/
+
+# ModelScope 的下载缓存（二进制，无意义）
+dataset/.msc
+.ms_cache/
+
+# 实验数据与产物（日志 / 权重 / 报告）全部在 test/ 下，不进版本库。
+# 其中 test/storage/ 与 test/configs/sweep/ 是**实验脚本与配置**（代码），
+# 如需纳入版本库，可改成：
+#     test/log/
+#     test/out/
+#     test/checkpoints/
+#     test/storage/report/
+#     test/storage/results/
+#     test/storage/pretrain/
+test/

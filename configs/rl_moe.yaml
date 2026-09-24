@@ -1,0 +1,72 @@
+# =============================================================================
+# 强化学习配置（MoE 架构）—— 与 configs/rl.yaml 逐项同参，只换模型结构
+# -----------------------------------------------------------------------------
+# 为什么需要单独一份：rl.yaml 的 `defaults: base.yaml` 给的是 Dense 结构
+# （gqa + swiglu），而 MoE 臂要的是 gated + moe_finegrained。配置合成是
+# 「defaults 先合并、本文件的键最后覆盖」，所以这里继承 rl.yaml 的全部
+# 数据/超参/algo 段，再显式覆盖四个架构槽位。
+#
+# 数据、批量、学习率、seed 全部沿用 rl.yaml —— 两条腿唯一的差异就是架构，
+# 因此 reward / KL / pass_rate 这些曲线的差异可以归因于结构本身。
+#
+# 用法（仓库根目录）：
+#   python trainer/train.py --algo grpo --config configs/rl_moe.yaml --max_steps 1000
+#
+# 产出：test/out/grpo_768_moe.pth 之类（权重名自动带 _moe 后缀）
+# =============================================================================
+defaults: rl.yaml
+
+# ---------------------------- 架构槽位（与 pretrain_moe.yaml 一致）----------------------------
+attention:
+  type: gated                     # ← Dense 是 gqa
+  num_attention_heads: 8
+  num_key_value_heads: 4
+  qk_norm: true
+  flash_attn: true
+  flash_attn_masked: true         # 继承 rl.yaml 的开关，这里写出来是为了显式
+
+feedforward:
+  type: moe_finegrained           # ← Dense 是 swiglu
+  num_experts: 16
+  num_experts_per_tok: 4
+  num_shared_experts: 1
+  moe_intermediate_size: 608
+  aux_loss_free_balance: true
+  bias_update_rate: 1.0e-3
+  routed_scaling_factor: 1.0
+
+# =============================================================================
+# 显存上限（MoE 腿专属）
+# -----------------------------------------------------------------------------
+# 为什么需要：MoE 在 GRPO/DAPO/Agent 下要同时驻留 policy + reference + reward model
+# 三份权重（214M + 214M + 1.8B）。25G 卡上实测 grpo 第 314 步 OOM
+# （`grpo.py:86` 的 log_softmax 还要 524 MiB，卡上已用 23.07 GiB）。
+#
+# 省显存的手段必须落在**算法自己的段**里，不能写在公共 `train:` 段 ——
+# configs/loader.py 的合并顺序是「algo 段最后覆盖」，所以公共段的值会被各算法的
+# 同名键顶掉。下面每个键都是直接覆盖对应算法原有的值。
+#
+# 口径：一次 generate 的激活正比于 batch × num_generations × max_gen_len，
+# 梯度反传也正比于同批有效 token 数。这三个旋钮都不改算法的数学形式。
+#
+# 离线偏好算法（dpo/ipo/simpo/cpo/orpo/kto）**不需要也不能动**：它们没有 rollout、
+# 不加载 reward model，显存只有 9.4 GB，跑满 1000 步只要 0.17 h。
+# =============================================================================
+algo:
+  grpo:
+    num_generations: 2            # 原 6
+    max_gen_len: 512              # 原 1024
+  dapo:
+    num_generations: 2            # 原 8
+    max_gen_len: 512              # 原 1024
+    dapo_max_resample: 1          # 原 4 —— 重采样是与前向同阶的开销，4 次让峰值翻倍
+  rloo:
+    num_generations: 2            # 原 4（RLOO 要求 >= 2）
+    max_gen_len: 512              # 原 1024
+  ppo:
+    num_generations: 2            # 原 6（公共段默认）—— PPO 只有一条采样
+    max_gen_len: 512              # 原 1024
+    mini_batch_size: 1            # 原 2 — 把一次反传的样本数减半
+  agent:
+    num_generations: 2            # 原 4
+    max_gen_len: 512              # 原 768
